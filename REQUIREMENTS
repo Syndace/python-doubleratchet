@@ -1,0 +1,9 @@
+Library: HKDF - HMAC Key Derivation Function
+Link: https://github.com/casebeer/python-hkdf
+License: BSD-2-Clause "Simplified" License
+Installation: pip install hkdf
+
+Library: SCCI - Syndace's Common Crypto-Interfaces
+Link: https://github.com/Syndace/scci
+License: MIT
+Installation: pip install scci
