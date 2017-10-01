@@ -27,7 +27,7 @@ class ChainKeyKDF(KDF):
         self.__chain_key_constant = chain_key_constant
         self.__message_key_constant = message_key_constant
     
-    def calculate(self, key, *args):
+    def calculate(self, key, data, length):
         """
         As recommended, use HMAC with either SHA-256 or SHA-512.
         Supply the chain key as the HMAC key and a constant as input.
