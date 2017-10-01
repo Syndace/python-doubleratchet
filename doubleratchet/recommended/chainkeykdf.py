@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from ..exceptions import InvalidHashFunctionException
 from ..kdf import KDF
 
 import hashlib
@@ -20,9 +19,6 @@ class ChainKeyKDF(KDF):
 
         super(ChainKeyKDF, self).__init__()
 
-        if not hash_function in ChainKeyKDF.HASH_FUNCTIONS:
-            raise InvalidHashFunctionException("The hash function parameter must be any key of ChainKeyKDF.HASH_FUNCTIONS")
-
         self.__hash_function = ChainKeyKDF.HASH_FUNCTIONS[hash_function]
         self.__chain_key_constant = chain_key_constant
         self.__message_key_constant = message_key_constant
@@ -33,10 +29,7 @@ class ChainKeyKDF(KDF):
         Supply the chain key as the HMAC key and a constant as input.
         """
 
-        chain_key = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()
-        message_key = hmac.new(key, self.__message_key_constant, self.__hash_function).digest()
-
-        result = chain_key
-        result.expand(message_key)
+        result = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()
+        result.extend(hmac.new(key, self.__message_key_constant, self.__hash_function).digest())
 
         return result

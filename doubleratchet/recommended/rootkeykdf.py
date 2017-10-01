@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from ..exceptions import InvalidHashFunctionException
 from ..kdf import KDF
 
 from hkdf import hkdf_expand, hkdf_extract
@@ -16,9 +15,6 @@ class RootKeyKDF(KDF):
     def __init__(self, hash_function, info_string):
         super(RootKeyKDF, self).__init__()
 
-        if not hash_function in RootKeyKDF.HASH_FUNCTIONS:
-            raise InvalidHashFunctionException("The hash function parameter must be any key of RootKeyKDF.HASH_FUNCTIONS")
-
         self.__hash_function = RootKeyKDF.HASH_FUNCTIONS[hash_function]
         self.__info_string = info_string
     
@@ -30,4 +26,4 @@ class RootKeyKDF(KDF):
         - An application defined info string
         """
 
-        return hkdf_expand(hkdf_extract(key, data, self.__config.hash_function), self.__info_string, length, self.__config.hash_function)
+        return hkdf_expand(hkdf_extract(key, data, self.__hash_function), self.__info_string, length, self.__hash_function)

@@ -3,31 +3,38 @@ from __future__ import absolute_import
 from .ratchet import Ratchet
 
 class DHRatchet(Ratchet):
-    def __init__(self, root_chain, key_quad_class, other_pub = None):
+    def __init__(self, config):
         super(DHRatchet, self).__init__()
 
-        self.__root_chain = root_chain
+        self.__config = config.dh_config
 
-        self.__KeyQuad = key_quad_class
-
-        self.__key = self.__KeyQuad.generate()
-        self.__other = self.__KeyQuad(public_key = other_pub)
+        self.__newRatchetKey()
+        self.__wrapOtherPub(self.__config.other_pub)
 
         if self.__other.pub:
-            self._onNewKey(self.__root_chain.next(self.__key.getSharedSecret(self.__other)), "sending")
+            self.__newRootKey("sending")
 
     def step(self, other_pub):
-        if other_pub != self.__other.pub:
-            self.__other = self.__KeyQuad(public_key = other_pub)
+        if self.triggersStep():
+            self.__wrapOtherPub(other_pub)
+            self.__newRootKey("receiving")
+            self.__newRatchetKey()
+            self.__newRootKey("sending")
 
-            self._onNewKey(self.__root_chain.next(self.__key.getSharedSecret(self.__other)), "receiving")
+    def __wrapOtherPub(self, other_pub):
+        self.__other = self.__config.KeyQuad(public_key = other_pub)
 
-            self.__key = self.__KeyQuad.generate()
+    def __newRatchetKey(self):
+        self.__key = self.__config.KeyQuad.generate()
 
-            self._onNewKey(self.__root_chain.next(self.__key.getSharedSecret(self.__other)), "sending")
+    def triggersStep(self, other_pub):
+        return other_pub != self.__other.pub
 
-    def _onNewKey(self, key, chain):
-        pass
+    def __newRootKey(self, chain):
+        self._onNewChainKey(self.__config.root_chain.next(self.__key.getSharedSecret(self.__other)), chain)
+
+    def _onNewChainKey(self, key, chain):
+        raise NotImplementedError
 
     @property
     def pub(self):

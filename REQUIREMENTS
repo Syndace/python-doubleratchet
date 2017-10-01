@@ -7,3 +7,8 @@ Library: SCCI - Syndace's Common Crypto-Interfaces
 Link: https://github.com/Syndace/scci
 License: MIT
 Installation: pip install scci
+
+Library: PyCryptodome
+Link: https://github.com/Legrandin/pycryptodome
+License: Public Domain / BSD / OCB (look at the LICENSE.rst file in their git)
+Installation: pip install pycryptodome
