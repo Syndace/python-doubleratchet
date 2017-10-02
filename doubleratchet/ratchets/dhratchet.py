@@ -8,10 +8,13 @@ class DHRatchet(Ratchet):
 
         self.__config = config.dh_config
 
-        self.__newRatchetKey()
-        self.__wrapOtherPub(self.__config.other_pub)
+        if self.__config.own_key:
+            self.__key = self.__config.own_key
+        else:
+            self.__newRatchetKey()
 
-        if self.__other.pub:
+        if self.__config.other_pub:
+            self.__wrapOtherPub(self.__config.other_pub)
             self.__newRootKey("sending")
 
     def step(self, other_pub):
