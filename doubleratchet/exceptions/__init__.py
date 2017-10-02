@@ -2,3 +2,4 @@ from __future__ import absolute_import
 
 from .aeadexceptions import AuthenticationFailedException
 from .doubleratchetexceptions import TooManySavedMessageKeysException
+from .symmetrickeyratchetexceptions import NotInitializedException

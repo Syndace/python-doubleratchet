@@ -15,3 +15,6 @@ class Header(object):
     @property
     def pn(self):
         return self.__pn
+
+    def __str__(self):
+        return "N: " + str(self.n) + "\nPN: " + str(self.pn) + "\nDH pub: " + ":".join("{:02x}".format(ord(c)) for c in self.dh_pub)

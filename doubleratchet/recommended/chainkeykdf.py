@@ -29,7 +29,7 @@ class ChainKeyKDF(KDF):
         Supply the chain key as the HMAC key and a constant as input.
         """
 
-        result = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()
-        result.extend(hmac.new(key, self.__message_key_constant, self.__hash_function).digest())
+        chain_key = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()
+        message_key = hmac.new(key, self.__message_key_constant, self.__hash_function).digest()
 
-        return result
+        return chain_key + message_key

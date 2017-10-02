@@ -15,7 +15,7 @@ class DHRatchet(Ratchet):
             self.__newRootKey("sending")
 
     def step(self, other_pub):
-        if self.triggersStep():
+        if self.triggersStep(other_pub):
             self.__wrapOtherPub(other_pub)
             self.__newRootKey("receiving")
             self.__newRatchetKey()
@@ -39,3 +39,7 @@ class DHRatchet(Ratchet):
     @property
     def pub(self):
         return self.__key.pub
+
+    @property
+    def other_pub(self):
+        return self.__other.pub

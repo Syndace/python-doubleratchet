@@ -5,9 +5,10 @@ from ..header import Header
 
 class DoubleRatchet(DHRatchet):
     def __init__(self, config):
-        super(DoubleRatchet, self).__init__(config)
-
         self.__config = config.dr_config
+
+        # This super constructor may already trigger _onNewChainKey, that's why the config has to be saved before the constructor gets called
+        super(DoubleRatchet, self).__init__(config)
 
         self.__saved_message_keys = {}
 
@@ -20,7 +21,7 @@ class DoubleRatchet(DHRatchet):
 
     def decodeMessage(self, ciphertext, header, ad):
         # Try to decode the message using a previously saved message key
-        plaintext = self.__decodeSavedMessage(ciphertext, header)
+        plaintext = self.__decodeSavedMessage(ciphertext, header, ad)
         if plaintext:
             return plaintext
 
@@ -41,7 +42,7 @@ class DoubleRatchet(DHRatchet):
     def __decode(self, ciphertext, key, header, ad):
         return self.__config.aead.decrypt(ciphertext, key, self._makeAD(header, ad))
 
-    def __decodeSavedMessage(self, ciphertext, header):
+    def __decodeSavedMessage(self, ciphertext, header, ad):
         try:
             # Search for a saved key for this message
             key = self.__saved_message_keys[(header.dh_pub, header.n)]
@@ -56,13 +57,17 @@ class DoubleRatchet(DHRatchet):
         return self.__decode(ciphertext, key, header, ad)
 
     def __saveMessageKeys(self, target):
+        if self.__config.skr.receiving_chain_length == None:
+            return
+
         # Check, whether the mk_store_max value would get crossed by saving these message keys
         if (target - self.__config.skr.receiving_chain_length) + len(self.__saved_message_keys) > self.__config.mk_store_max:
             raise TooManySavedMessageKeysException()
 
         # Save all message keys until the target chain length was reached
         while self.__config.skr.receiving_chain_length < target:
-            self.__saved_message_keys[(self.pub, self.__config.skr.receiving_chain_length)] = self.__config.skr.nextDecryptionKey()
+            next_key = self.__config.skr.nextDecryptionKey()
+            self.__saved_message_keys[(self.other_pub, self.__config.skr.receiving_chain_length - 1)] = next_key
 
     def encodeMessage(self, plaintext, ad):
         # Prepare the header for this message

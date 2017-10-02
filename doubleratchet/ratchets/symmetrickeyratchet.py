@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from ..exceptions import NotInitializedException
 from .ratchet import Ratchet
 
 class SymmetricKeyRatchet(Ratchet):
@@ -17,10 +18,10 @@ class SymmetricKeyRatchet(Ratchet):
     def step(self, key, chain):
         if chain == "sending":
             self.__previous_sending_chain_length = self.sending_chain_length
-            self.__sending_chain = self.__SendingChain(sending_chain_key)
+            self.__sending_chain = self.__SendingChain(key)
 
         if chain == "receiving":
-            self.__receiving_chain = self.__ReceivingChain(receiving_chain_key)
+            self.__receiving_chain = self.__ReceivingChain(key)
 
     @property
     def previous_sending_chain_length(self):
@@ -28,13 +29,16 @@ class SymmetricKeyRatchet(Ratchet):
 
     @property
     def sending_chain_length(self):
-        return self.__sending_chain.length
+        return self.__sending_chain.length if self.__sending_chain else None
 
     @property
     def receiving_chain_length(self):
-        return self.__receiving_chain.length
+        return self.__receiving_chain.length if self.__receiving_chain else None
 
     def nextEncryptionKey(self):
+        if self.__sending_chain == None:
+            raise NotInitializedException("The other's public key is not known yet.")
+
         return self.__sending_chain.next()
 
     def nextDecryptionKey(self):

@@ -38,10 +38,10 @@ class CBCHMACAEAD(AEAD):
 
     def __authenticate(self, ciphertext, ad, authentication_key):
         # Append the ciphertext to the associated data as input for the HMAC calculation
-        ad.extend(ciphertext)
+        hmac_input = ad + ciphertext
 
         # Calculate the HMAC with the same hash function as the hkdf, use the authentication key from the HKDF result as key and ad+ciphertext as input
-        return hmac.new(authentication_key, ad, self.__hash_function).digest()
+        return hmac.new(authentication_key, hmac_input, self.__hash_function).digest()
 
     def encrypt(self, plaintext, message_key, ad):
         encryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
@@ -55,9 +55,7 @@ class CBCHMACAEAD(AEAD):
         authentication = self.__authenticate(ciphertext, ad, authentication_key)
 
         # Append the authentication to the ciphertext
-        ciphertext.extend(authentication)
-
-        return ciphertext
+        return ciphertext + authentication
 
     def decrypt(self, ciphertext, message_key, ad):
         # Split the authentication and the actual ciphertext
