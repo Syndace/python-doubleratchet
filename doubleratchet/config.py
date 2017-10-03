@@ -1,7 +1,8 @@
 class DoubleRatchetConfig(object):
-    def __init__(self, symmetric_key_ratchet, aead, message_key_store_max):
+    def __init__(self, symmetric_key_ratchet, aead, ad, message_key_store_max):
         self.__symmetric_key_ratchet = symmetric_key_ratchet
         self.__aead = aead
+        self.__ad = ad
         self.__message_key_store_max = message_key_store_max
 
     @property
@@ -13,11 +14,15 @@ class DoubleRatchetConfig(object):
         return self.__aead
 
     @property
+    def ad(self):
+        return self.__ad
+
+    @property
     def mk_store_max(self):
         return self.__message_key_store_max
 
 class DHRatchetConfig(object):
-    def __init__(self, root_chain, key_quad_class, own_key, other_pub = None):
+    def __init__(self, root_chain, key_quad_class, own_key = None, other_pub = None):
         self.__root_chain = root_chain
         self.__key_quad_class = key_quad_class
         self.__own_key = own_key

@@ -19,7 +19,10 @@ class DoubleRatchet(DHRatchet):
 
         self.__config.skr.step(key, chain)
 
-    def decodeMessage(self, ciphertext, header, ad):
+    def decodeMessage(self, ciphertext, header, ad = None):
+        if ad == None:
+            ad = self.__config.ad
+
         # Try to decode the message using a previously saved message key
         plaintext = self.__decodeSavedMessage(ciphertext, header, ad)
         if plaintext:
@@ -69,7 +72,10 @@ class DoubleRatchet(DHRatchet):
             next_key = self.__config.skr.nextDecryptionKey()
             self.__saved_message_keys[(self.other_pub, self.__config.skr.receiving_chain_length - 1)] = next_key
 
-    def encodeMessage(self, plaintext, ad):
+    def encodeMessage(self, plaintext, ad = None):
+        if ad == None:
+            ad = self.__config.ad
+
         # Prepare the header for this message
         header = Header(self.pub, self.__config.skr.sending_chain_length, self.__config.skr.previous_sending_chain_length)
 
