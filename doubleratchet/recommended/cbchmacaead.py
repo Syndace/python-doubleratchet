@@ -16,12 +16,13 @@ class CBCHMACAEAD(AEAD):
         "SHA-512": hashlib.sha512
     }
 
-    def __init__(self, hash_function, info_string):
+    def __init__(self, hash_function, info_string, auth_tag_size):
         super(CBCHMACAEAD, self).__init__()
 
         self.__hash_function = CBCHMACAEAD.HASH_FUNCTIONS[hash_function]
         self.__digest_size = self.__hash_function().digest_size
         self.__info_string = info_string
+        self.__auth_tag_size = auth_tag_size
 
     def __getHKDFOutput(self, message_key):
         # Prepare the salt, which should be a string of 0x00 bytes with the length of the hash digest
@@ -41,7 +42,7 @@ class CBCHMACAEAD(AEAD):
         hmac_input = ad + ciphertext
 
         # Calculate the HMAC with the same hash function as the hkdf, use the authentication key from the HKDF result as key and ad+ciphertext as input
-        return hmac.new(authentication_key, hmac_input, self.__hash_function).digest()
+        return hmac.new(authentication_key, hmac_input, self.__hash_function).digest()[:self.__auth_tag_size]
 
     def encrypt(self, plaintext, message_key, ad):
         encryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
@@ -59,8 +60,8 @@ class CBCHMACAEAD(AEAD):
 
     def decrypt(self, ciphertext, message_key, ad):
         # Split the authentication and the actual ciphertext
-        authentication_old = ciphertext[-self.__digest_size:]
-        ciphertext = ciphertext[:-self.__digest_size]
+        authentication_old = ciphertext[-self.__auth_tag_size:]
+        ciphertext = ciphertext[:-self.__auth_tag_size]
 
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
