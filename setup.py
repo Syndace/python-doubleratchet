@@ -9,6 +9,6 @@ setup(
     author = "Tim Henkes",
     url = "https://github.com/Syndace/python-doubleratchet",
     packages = ["doubleratchet", "doubleratchet.chains", "doubleratchet.exceptions", "doubleratchet.ratchets", "doubleratchet.recommended"],
-    requires = ["scci", "hkdf", "pycryptodome"],
+    requires = ["scci", "hkdf", "pycryptodomex"],
     provides = ["doubleratchet"]
 )

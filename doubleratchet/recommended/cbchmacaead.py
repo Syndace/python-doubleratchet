@@ -3,8 +3,8 @@ from __future__ import absolute_import
 from ..aead import AEAD
 from ..exceptions import AuthenticationFailedException
 
-from Crypto.Cipher import AES
-from Crypto.Util import Padding
+from Cryptodome.Cipher import AES
+from Cryptodome.Util import Padding
 from hkdf import hkdf_expand, hkdf_extract
 
 import hashlib
