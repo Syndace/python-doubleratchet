@@ -22,11 +22,11 @@ class DoubleRatchetConfig(object):
         return self.__message_key_store_max
 
 class DHRatchetConfig(object):
-    def __init__(self, root_chain, key_quad_class, own_key = None, other_pub = None):
+    def __init__(self, root_chain, key_quad_class, own_key = None, other_enc = None):
         self.__root_chain = root_chain
         self.__key_quad_class = key_quad_class
         self.__own_key = own_key
-        self.__other_pub = other_pub
+        self.__other_enc = other_enc
 
     @property
     def root_chain(self):
@@ -41,8 +41,8 @@ class DHRatchetConfig(object):
         return self.__own_key
 
     @property
-    def other_pub(self):
-        return self.__other_pub
+    def other_enc(self):
+        return self.__other_enc
 
 class Config(object):
     def __init__(self, double_ratchet_config, dh_ratchet_config):

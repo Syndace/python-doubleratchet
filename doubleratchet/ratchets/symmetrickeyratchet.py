@@ -37,7 +37,7 @@ class SymmetricKeyRatchet(Ratchet):
 
     def nextEncryptionKey(self):
         if self.__sending_chain == None:
-            raise NotInitializedException("The other's public key is not known yet.")
+            raise NotInitializedException("Can not get the next encryption key from the symmetric key ratchet, the other's public key is not known yet")
 
         return self.__sending_chain.next()
 

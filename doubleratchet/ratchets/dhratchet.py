@@ -13,26 +13,26 @@ class DHRatchet(Ratchet):
         else:
             self.__newRatchetKey()
 
-        self.__wrapOtherPub(self.__config.other_pub)
+        self.__wrapOtherEnc(self.__config.other_enc)
 
-        if self.__other.pub:
+        if self.__other.enc:
             self.__newRootKey("sending")
 
-    def step(self, other_pub):
-        if self.triggersStep(other_pub):
-            self.__wrapOtherPub(other_pub)
+    def step(self, other_enc):
+        if self.triggersStep(other_enc):
+            self.__wrapOtherEnc(other_enc)
             self.__newRootKey("receiving")
             self.__newRatchetKey()
             self.__newRootKey("sending")
 
-    def __wrapOtherPub(self, other_pub):
-        self.__other = self.__config.KeyQuad(public_key = other_pub)
+    def __wrapOtherEnc(self, other_enc):
+        self.__other = self.__config.KeyQuad(encryption_key = other_enc)
 
     def __newRatchetKey(self):
         self.__key = self.__config.KeyQuad.generate()
 
-    def triggersStep(self, other_pub):
-        return other_pub != self.__other.pub
+    def triggersStep(self, other_enc):
+        return other_enc != self.__other.enc
 
     def __newRootKey(self, chain):
         self._onNewChainKey(self.__config.root_chain.next(self.__key.getSharedSecret(self.__other)), chain)
@@ -41,9 +41,9 @@ class DHRatchet(Ratchet):
         raise NotImplementedError
 
     @property
-    def pub(self):
-        return self.__key.pub
+    def enc(self):
+        return self.__key.enc
 
     @property
-    def other_pub(self):
-        return self.__other.pub
+    def other_enc(self):
+        return self.__other.enc
