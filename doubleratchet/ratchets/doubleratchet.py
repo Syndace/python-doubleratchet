@@ -72,7 +72,7 @@ class DoubleRatchet(DHRatchet):
             next_key = self.__config.skr.nextDecryptionKey()
             self.__saved_message_keys[(self.other_enc, self.__config.skr.receiving_chain_length - 1)] = next_key
 
-    def encodeMessage(self, plaintext, ad = None):
+    def encryptMessage(self, message, ad = None):
         if ad == None:
             ad = self.__config.ad
 
@@ -80,7 +80,7 @@ class DoubleRatchet(DHRatchet):
         header = Header(self.enc, self.__config.skr.sending_chain_length, self.__config.skr.previous_sending_chain_length)
 
         # Encrypt the message
-        ciphertext = self.__config.aead.encrypt(plaintext, self.__config.skr.nextEncryptionKey(), self._makeAD(header, ad))
+        ciphertext = self.__config.aead.encrypt(message, self.__config.skr.nextEncryptionKey(), self._makeAD(header, ad))
 
         return {
             "header": header,

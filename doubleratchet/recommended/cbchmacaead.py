@@ -29,7 +29,7 @@ class CBCHMACAEAD(AEAD):
         salt = b"\x00" * self.__digest_size
 
         # Get 80 bytes from the HKDF calculation
-        hkdf_out = hkdf_expand(hkdf_extract(salt, message_key, self.__hash_function), self.__info_string, 80, self.__hash_function)
+        hkdf_out = hkdf_expand(hkdf_extract(salt, message_key, self.__hash_function), self.__info_string.encode("ASCII"), 80, self.__hash_function)
 
         # Split these 80 bytes in three parts
         return hkdf_out[:32], hkdf_out[32:64], hkdf_out[64:]

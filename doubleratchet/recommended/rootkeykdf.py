@@ -26,4 +26,4 @@ class RootKeyKDF(KDF):
         - An application defined info string
         """
 
-        return hkdf_expand(hkdf_extract(key, data, self.__hash_function), self.__info_string, length, self.__hash_function)
+        return hkdf_expand(hkdf_extract(key, data, self.__hash_function), self.__info_string.encode("ASCII"), length, self.__hash_function)
