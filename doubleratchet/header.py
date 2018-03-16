@@ -17,4 +17,4 @@ class Header(object):
         return self.__pn
 
     def __str__(self):
-        return "N: " + str(self.n) + "\nPN: " + str(self.pn) + "\nDH enc: " + ":".join("{:02x}".format(ord(c)) for c in self.dh_enc)
+        return "N: " + str(self.n) + "\nPN: " + str(self.pn) + "\nDH enc: " + ":".join("{:02x}".format(c) for c in self.dh_enc)
