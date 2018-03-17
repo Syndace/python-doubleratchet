@@ -82,10 +82,10 @@ class DoubleRatchet(DHRatchet):
         # Encrypt the message
         ciphertext = self.__config.aead.encrypt(message, self.__config.skr.nextEncryptionKey(), self._makeAD(header, ad))
 
-        return {
-            "header": header,
-            "ciphertext": ciphertext
-        }
+        # Add the header to the ciphertext message
+        ciphertext["header"] = header
+
+        return ciphertext
 
     def _makeAD(self, header, ad):
         raise NotImplementedError

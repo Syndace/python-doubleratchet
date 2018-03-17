@@ -27,6 +27,8 @@ class ChainKeyKDF(KDF):
         """
         As recommended, use HMAC with either SHA-256 or SHA-512.
         Supply the chain key as the HMAC key and a constant as input.
+
+        Ignore the data.
         """
 
         chain_key = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()

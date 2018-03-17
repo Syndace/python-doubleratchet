@@ -37,13 +37,6 @@ class CBCHMACAEAD(AEAD):
     def __getAES(self, key, iv):
         return AES.new(key, AES.MODE_CBC, iv = iv)
 
-    def __authenticate(self, ciphertext, ad, authentication_key):
-        # Append the ciphertext to the associated data as input for the HMAC calculation
-        hmac_input = ad + ciphertext
-
-        # Calculate the HMAC with the same hash function as the hkdf, use the authentication key from the HKDF result as key and ad+ciphertext as input
-        return hmac.new(authentication_key, hmac_input, self.__hash_function).digest()[:self.__auth_tag_size]
-
     def encrypt(self, plaintext, message_key, ad):
         encryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
@@ -53,26 +46,22 @@ class CBCHMACAEAD(AEAD):
         # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
         ciphertext = self.__getAES(encryption_key, iv).encrypt(plaintext)
 
-        authentication = self.__authenticate(ciphertext, ad, authentication_key)
-
         # Append the authentication to the ciphertext
-        return ciphertext + authentication
+        return {
+            "ciphertext": ciphertext,
+            "authentication_key": authentication_key,
+            "ad": ad
+        }
 
     def decrypt(self, ciphertext, message_key, ad):
-        # Split the authentication and the actual ciphertext
-        authentication_old = ciphertext[-self.__auth_tag_size:]
-        ciphertext = ciphertext[:-self.__auth_tag_size]
-
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
-
-        authentication_new = self.__authenticate(ciphertext, ad, authentication_key)
-
-        # Verify that both authentications are equal
-        if not hmac.compare_digest(authentication_old, authentication_new):
-            raise AuthenticationFailedException()
 
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
         plaintext = self.__getAES(decryption_key, iv).decrypt(ciphertext)
         
         # Remove the PKCS#7 padding from the plaintext and return the final unencrypted plaintext
-        return Padding.unpad(plaintext, 16, "pkcs7")
+        return {
+            "plaintext": Padding.unpad(plaintext, 16, "pkcs7"),
+            "authentication_key": authentication_key,
+            "ad": ad
+        }
