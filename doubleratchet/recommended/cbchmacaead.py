@@ -3,8 +3,9 @@ from __future__ import absolute_import
 from ..aead import AEAD
 from ..exceptions import AuthenticationFailedException
 
-from Cryptodome.Cipher import AES
-from Cryptodome.Util import Padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
 from hkdf import hkdf_expand, hkdf_extract
 
 import hashlib
@@ -35,16 +36,18 @@ class CBCHMACAEAD(AEAD):
         return hkdf_out[:32], hkdf_out[32:64], hkdf_out[64:]
 
     def __getAES(self, key, iv):
-        return AES.new(key, AES.MODE_CBC, iv = iv)
+        return Cipher(algorithms.AES(key), modes.CBC(iv), backend = default_backend())
 
     def encrypt(self, plaintext, message_key, ad):
         encryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
         # Prepare PKCS#7 padded plaintext
-        plaintext = Padding.pad(plaintext, 16, "pkcs7")
+        padder    = padding.PKCS7(128).padder()
+        plaintext = padder.update(plaintext) + padder.finalize()
 
         # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
-        ciphertext = self.__getAES(encryption_key, iv).encrypt(plaintext)
+        aes_cbc    = self.__getAES(encryption_key, iv).encryptor()
+        ciphertext = aes_cbc.update(plaintext) + aes_cbc.finalize()
 
         # Append the authentication to the ciphertext
         return {
@@ -57,11 +60,15 @@ class CBCHMACAEAD(AEAD):
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
-        plaintext = self.__getAES(decryption_key, iv).decrypt(ciphertext)
+        aes_cbc   = self.__getAES(decryption_key, iv).decryptor()
+        plaintext = aes_cbc.update(ciphertext) + aes_cbc.finalize()
         
         # Remove the PKCS#7 padding from the plaintext and return the final unencrypted plaintext
+        unpadder  = padding.PKCS7(128).unpadder()
+        plaintext = unpadder.update(plaintext) + unpadder.finalize()
+
         return {
-            "plaintext": Padding.unpad(plaintext, 16, "pkcs7"),
+            "plaintext": plaintext,
             "authentication_key": authentication_key,
             "ad": ad
         }
