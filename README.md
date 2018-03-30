@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Syndace/python-doubleratchet.svg?branch=master)](https://travis-ci.org/Syndace/python-doubleratchet)
+
 # python-doubleratchet
 #### A python implementation of the Double Ratchet algorithm.
 
