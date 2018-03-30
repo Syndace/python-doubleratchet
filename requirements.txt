@@ -1,0 +1,4 @@
+git+https://github.com/Syndace/python-scci.git
+hkdf
+cryptography
+pytest

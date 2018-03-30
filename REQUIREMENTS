@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -------------------------------------------------------------------------------
 
 Library: SCCI - Syndace's Common Crypto-Interfaces
-Link: https://github.com/Syndace/scci
+Link: https://github.com/Syndace/python-scci
 Installation: manual installation (pip might follow soon)
 Last update of this entry: 3rd of March, 2018
 License: MIT
