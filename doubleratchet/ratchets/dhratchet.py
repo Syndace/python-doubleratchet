@@ -35,7 +35,10 @@ class DHRatchet(Ratchet):
         return other_enc != self.__other.enc
 
     def __newRootKey(self, chain):
-        self._onNewChainKey(self.__config.root_chain.next(self.__key.getSharedSecret(self.__other)), chain)
+        self._onNewChainKey(
+            self.__config.root_chain.next(self.__key.getSharedSecret(self.__other)),
+            chain
+        )
 
     def _onNewChainKey(self, key, chain):
         raise NotImplementedError

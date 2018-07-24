@@ -13,8 +13,12 @@ class ChainKeyKDF(KDF):
 
     def __init__(self, hash_function, chain_key_constant, message_key_constant):
         """
-        The hash function parameter must be a key of ChainKeyKDF.HASH_FUNCTIONS (SHA-256 or SHA-512).
-        The constants should be single bytes for each type of calculation (e.g. 0x01 as input to produce the message key, and a single byte 0x02 as input to produce the next chain key)
+        The hash function parameter must be a key of ChainKeyKDF.HASH_FUNCTIONS
+        ("SHA-256" or "SHA-512").
+
+        The constants should be single bytes for each type of calculation
+        (e.g. 0x01 as input to produce the message key, and a single byte 0x02 as input
+        to produce the next chain key)
         """
 
         super(ChainKeyKDF, self).__init__()
@@ -31,7 +35,7 @@ class ChainKeyKDF(KDF):
         Ignore the data.
         """
 
-        chain_key = hmac.new(key, self.__chain_key_constant, self.__hash_function).digest()
-        message_key = hmac.new(key, self.__message_key_constant, self.__hash_function).digest()
+        chain_key   = hmac.new(key, self.__chain_key_constant,   self.__hash_function)
+        message_key = hmac.new(key, self.__message_key_constant, self.__hash_function)
 
-        return chain_key + message_key
+        return chain_key.digest() + message_key.digest()

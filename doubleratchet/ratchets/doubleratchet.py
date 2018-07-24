@@ -7,7 +7,8 @@ class DoubleRatchet(DHRatchet):
     def __init__(self, config):
         self.__config = config.dr_config
 
-        # This super constructor may already trigger _onNewChainKey, that's why the config has to be saved before the constructor gets called
+        # This super constructor may already trigger _onNewChainKey,
+        # that's why the config has to be saved before the constructor gets called.
         super(DoubleRatchet, self).__init__(config)
 
         self.__saved_message_keys = {}
@@ -40,7 +41,12 @@ class DoubleRatchet(DHRatchet):
         self.__saveMessageKeys(header.n)
 
         # Finally decrypt the message and return the plaintext
-        return self.__decrypt(ciphertext, self.__config.skr.nextDecryptionKey(), header, ad)
+        return self.__decrypt(
+            ciphertext,
+            self.__config.skr.nextDecryptionKey(),
+            header,
+            ad
+        )
 
     def __decrypt(self, ciphertext, key, header, ad):
         return self.__config.aead.decrypt(ciphertext, key, self._makeAD(header, ad))
@@ -63,24 +69,36 @@ class DoubleRatchet(DHRatchet):
         if self.__config.skr.receiving_chain_length == None:
             return
 
-        # Check, whether the mk_store_max value would get crossed by saving these message keys
-        if (target - self.__config.skr.receiving_chain_length) + len(self.__saved_message_keys) > self.__config.mk_store_max:
+        num_keys_to_save = target - self.__config.skr.receiving_chain_length
+
+        # Check whether the mk_store_max value would get crossed saving these message keys
+        if num_keys_to_save + len(self.__saved_message_keys) > self.__config.mk_store_max:
             raise TooManySavedMessageKeysException()
 
         # Save all message keys until the target chain length was reached
         while self.__config.skr.receiving_chain_length < target:
-            next_key = self.__config.skr.nextDecryptionKey()
-            self.__saved_message_keys[(self.other_enc, self.__config.skr.receiving_chain_length - 1)] = next_key
+            next_key  = self.__config.skr.nextDecryptionKey()
+            key_index = self.__config.skr.receiving_chain_length - 1
+
+            self.__saved_message_keys[(self.other_enc, key_index)] = next_key
 
     def encryptMessage(self, message, ad = None):
         if ad == None:
             ad = self.__config.ad
 
         # Prepare the header for this message
-        header = Header(self.enc, self.__config.skr.sending_chain_length, self.__config.skr.previous_sending_chain_length)
+        header = Header(
+            self.enc,
+            self.__config.skr.sending_chain_length,
+            self.__config.skr.previous_sending_chain_length
+        )
 
         # Encrypt the message
-        ciphertext = self.__config.aead.encrypt(message, self.__config.skr.nextEncryptionKey(), self._makeAD(header, ad))
+        ciphertext = self.__config.aead.encrypt(
+            message,
+            self.__config.skr.nextEncryptionKey(),
+            self._makeAD(header, ad)
+        )
 
         # Add the header to the ciphertext message
         ciphertext["header"] = header

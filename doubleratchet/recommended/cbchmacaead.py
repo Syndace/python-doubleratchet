@@ -26,11 +26,17 @@ class CBCHMACAEAD(AEAD):
         self.__auth_tag_size = auth_tag_size
 
     def __getHKDFOutput(self, message_key):
-        # Prepare the salt, which should be a string of 0x00 bytes with the length of the hash digest
+        # Prepare the salt, which should be a string of 0x00 bytes with the length of
+        # the hash digest
         salt = b"\x00" * self.__digest_size
 
         # Get 80 bytes from the HKDF calculation
-        hkdf_out = hkdf_expand(hkdf_extract(salt, message_key, self.__hash_function), self.__info_string.encode("ASCII"), 80, self.__hash_function)
+        hkdf_out = hkdf_expand(
+            hkdf_extract(salt, message_key, self.__hash_function),
+            self.__info_string.encode("ASCII"),
+            80,
+            self.__hash_function
+        )
 
         # Split these 80 bytes in three parts
         return hkdf_out[:32], hkdf_out[32:64], hkdf_out[64:]
@@ -45,7 +51,8 @@ class CBCHMACAEAD(AEAD):
         padder    = padding.PKCS7(128).padder()
         plaintext = padder.update(plaintext) + padder.finalize()
 
-        # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
+        # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size),
+        # CBC mode and the previously created key and iv
         aes_cbc    = self.__getAES(encryption_key, iv).encryptor()
         ciphertext = aes_cbc.update(plaintext) + aes_cbc.finalize()
 
@@ -59,11 +66,12 @@ class CBCHMACAEAD(AEAD):
     def decrypt(self, ciphertext, message_key, ad):
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
-        # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size), CBC mode and the previously created key and iv
+        # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size),
+        # CBC mode and the previously created key and iv
         aes_cbc   = self.__getAES(decryption_key, iv).decryptor()
         plaintext = aes_cbc.update(ciphertext) + aes_cbc.finalize()
         
-        # Remove the PKCS#7 padding from the plaintext and return the final unencrypted plaintext
+        # Remove the PKCS#7 padding from the plaintext
         unpadder  = padding.PKCS7(128).unpadder()
         plaintext = unpadder.update(plaintext) + unpadder.finalize()
 
