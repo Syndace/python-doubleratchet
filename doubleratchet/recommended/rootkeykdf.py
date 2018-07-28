@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ..kdf import KDF
 
 from hkdf import hkdf_expand, hkdf_extract

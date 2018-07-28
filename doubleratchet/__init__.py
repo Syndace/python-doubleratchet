@@ -9,5 +9,6 @@ from .aead import AEAD
 from .config import Config
 from .config import DHRatchetConfig
 from .config import DoubleRatchetConfig
+from .encryptionkeypair import EncryptionKeyPair
 from .header import Header
 from .kdf import KDF

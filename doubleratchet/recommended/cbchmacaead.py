@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ..aead import AEAD
 from ..exceptions import AuthenticationFailedException
 
@@ -17,13 +15,12 @@ class CBCHMACAEAD(AEAD):
         "SHA-512": hashlib.sha512
     }
 
-    def __init__(self, hash_function, info_string, auth_tag_size):
+    def __init__(self, hash_function, info_string):
         super(CBCHMACAEAD, self).__init__()
 
         self.__hash_function = CBCHMACAEAD.HASH_FUNCTIONS[hash_function]
         self.__digest_size = self.__hash_function().digest_size
         self.__info_string = info_string
-        self.__auth_tag_size = auth_tag_size
 
     def __getHKDFOutput(self, message_key):
         # Prepare the salt, which should be a string of 0x00 bytes with the length of
@@ -56,15 +53,24 @@ class CBCHMACAEAD(AEAD):
         aes_cbc    = self.__getAES(encryption_key, iv).encryptor()
         ciphertext = aes_cbc.update(plaintext) + aes_cbc.finalize()
 
+        # Build the authentication
+        auth = hmac.new(authentication_key, ad + ciphertext, self.__hash_function)
+
         # Append the authentication to the ciphertext
-        return {
-            "ciphertext": ciphertext,
-            "authentication_key": authentication_key,
-            "ad": ad
-        }
+        return ciphertext + auth.digest()
 
     def decrypt(self, ciphertext, message_key, ad):
+        auth_size = self.__hash_function().digest_size
+
+        auth       = ciphertext[-auth_size:]
+        ciphertext = ciphertext[:-auth_size]
+
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
+
+        new_auth = hmac.new(authentication_key, ad + ciphertext, self.__hash_function)
+
+        if not hmac.compare_digest(auth, new_auth.digest()):
+            raise AuthenticationFailedException()
 
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size),
         # CBC mode and the previously created key and iv
@@ -75,8 +81,4 @@ class CBCHMACAEAD(AEAD):
         unpadder  = padding.PKCS7(128).unpadder()
         plaintext = unpadder.update(plaintext) + unpadder.finalize()
 
-        return {
-            "plaintext": plaintext,
-            "authentication_key": authentication_key,
-            "ad": ad
-        }
+        return plaintext

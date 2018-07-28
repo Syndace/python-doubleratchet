@@ -22,9 +22,9 @@ class DoubleRatchetConfig(object):
         return self.__message_key_store_max
 
 class DHRatchetConfig(object):
-    def __init__(self, root_chain, key_quad_class, own_key = None, other_enc = None):
+    def __init__(self, root_chain, encryption_key_pair_class, own_key = None, other_enc = None):
         self.__root_chain = root_chain
-        self.__key_quad_class = key_quad_class
+        self.__encryption_key_pair_class = encryption_key_pair_class
         self.__own_key = own_key
         self.__other_enc = other_enc
 
@@ -33,8 +33,8 @@ class DHRatchetConfig(object):
         return self.__root_chain
 
     @property
-    def KeyQuad(self):
-        return self.__key_quad_class
+    def EncryptionKeyPair(self):
+        return self.__encryption_key_pair_class
 
     @property
     def own_key(self):

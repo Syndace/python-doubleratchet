@@ -1,4 +1,8 @@
-*.pyc
-*.tmp
 build/
+dist/
+DoubleRatchet.egg-info/
+*.pyc
+
 .pytest_cache/
+
+*.tmp

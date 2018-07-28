@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-
-from ..kdf import KDF
-
 class KDFChain(object):
     def __init__(self, key, kdf):
         """

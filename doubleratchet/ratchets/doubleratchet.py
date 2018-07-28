@@ -1,6 +1,5 @@
-from __future__ import absolute_import
-
 from .dhratchet import DHRatchet
+from ..exceptions import TooManySavedMessageKeysException
 from ..header import Header
 
 class DoubleRatchet(DHRatchet):
@@ -100,10 +99,10 @@ class DoubleRatchet(DHRatchet):
             self._makeAD(header, ad)
         )
 
-        # Add the header to the ciphertext message
-        ciphertext["header"] = header
-
-        return ciphertext
+        return {
+            "header"     : header,
+            "ciphertext" : ciphertext
+        }
 
     def _makeAD(self, header, ad):
         raise NotImplementedError

@@ -10,9 +10,9 @@ env:
   - CRYPTOGRAPHY_VERSION=1.7.1 # Version in Debian 9's apt repositories
 
 install:
-  - pip install --upgrade setuptools
   - pip install cryptography==$CRYPTOGRAPHY_VERSION
-  - pip install -r requirements.txt
+  - pip install pytest
+  - pip install pynacl # This is required for the tests, not for the module itself
   - python setup.py install
 
-script: true # py.test
+script: py.test

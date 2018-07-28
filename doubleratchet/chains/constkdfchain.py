@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from .kdfchain import KDFChain
 
 class ConstKDFChain(KDFChain):

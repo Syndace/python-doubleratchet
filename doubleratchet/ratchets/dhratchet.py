@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from .ratchet import Ratchet
 
 class DHRatchet(Ratchet):
@@ -26,10 +24,10 @@ class DHRatchet(Ratchet):
             self.__newRootKey("sending")
 
     def __wrapOtherEnc(self, other_enc):
-        self.__other = self.__config.KeyQuad(encryption_key = other_enc)
+        self.__other = self.__config.EncryptionKeyPair(enc = other_enc)
 
     def __newRatchetKey(self):
-        self.__key = self.__config.KeyQuad.generate()
+        self.__key = self.__config.EncryptionKeyPair.generate()
 
     def triggersStep(self, other_enc):
         return other_enc != self.__other.enc

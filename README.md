@@ -1,3 +1,5 @@
+[![PyPI](https://img.shields.io/pypi/v/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
 [![Build Status](https://travis-ci.org/Syndace/python-doubleratchet.svg?branch=master)](https://travis-ci.org/Syndace/python-doubleratchet)
 
 # python-doubleratchet
@@ -5,12 +7,6 @@
 
 This python library offers an implementation of the Double Ratchet algorithm as specified [here](https://signal.org/docs/specifications/doubleratchet/).
 
-Goals of this implementation are:
-- Keep it small and simple
-- Don't assume any parameters, leave it all configurable
-- Provide implementations of the recommended configurations for convenience
-- Keep the structure close to the spec, so readers of the spec have an easy time understanding the code and structure
+The goal is to provide a configurable and independent implementation of the algorithm, while keeping the structure close to the specification and providing recommended settings.
 
-This library is currently in a very early state, most of the code has not been tested at all, there are probably bugs.
-
-You can find examples in the [OMEMO library](https://github.com/Syndace/python-omemo), which uses this lib.
+This library was developed as part of [python-omemo](https://github.com/Syndace/python-omemo), a pretty cool end-to-end encryption protocol.
