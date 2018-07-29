@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from ..aead import AEAD
 from ..exceptions import AuthenticationFailedException
 

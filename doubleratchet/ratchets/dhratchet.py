@@ -1,20 +1,49 @@
+from __future__ import absolute_import
+
 from .ratchet import Ratchet
 
 class DHRatchet(Ratchet):
-    def __init__(self, config):
+    def __init__(
+        self,
+        root_chain,
+        encryption_key_pair_class,
+        own_key = None,
+        other_enc = None
+    ):
         super(DHRatchet, self).__init__()
 
-        self.__config = config.dh_config
+        self.__root_chain = root_chain
+        self._EncryptionKeyPair = encryption_key_pair_class
 
-        if self.__config.own_key:
-            self.__key = self.__config.own_key
+        if own_key:
+            self.__key = own_key
         else:
             self.__newRatchetKey()
 
-        self.__wrapOtherEnc(self.__config.other_enc)
+        self.__wrapOtherEnc(other_enc)
 
         if self.__other.enc:
             self.__newRootKey("sending")
+
+    def serialize(self):
+        return {
+            "super" : super(DHRatchet, self).serialize(),
+            "key"   : self.__key.serialize(),
+            "other" : self.__other.serialize()
+        }
+
+    @classmethod
+    def fromSerialized(cls, serialized, *args, **kwargs):
+        self = super(DHRatchet, cls).fromSerialized(
+            serialized["super"],
+            *args,
+            **kwargs
+        )
+
+        self.__key   = self._EncryptionKeyPair.fromSerialized(serialized["key"])
+        self.__other = self._EncryptionKeyPair.fromSerialized(serialized["other"])
+
+        return self
 
     def step(self, other_enc):
         if self.triggersStep(other_enc):
@@ -24,17 +53,17 @@ class DHRatchet(Ratchet):
             self.__newRootKey("sending")
 
     def __wrapOtherEnc(self, other_enc):
-        self.__other = self.__config.EncryptionKeyPair(enc = other_enc)
+        self.__other = self._EncryptionKeyPair(enc = other_enc)
 
     def __newRatchetKey(self):
-        self.__key = self.__config.EncryptionKeyPair.generate()
+        self.__key = self._EncryptionKeyPair.generate()
 
     def triggersStep(self, other_enc):
         return other_enc != self.__other.enc
 
     def __newRootKey(self, chain):
         self._onNewChainKey(
-            self.__config.root_chain.next(self.__key.getSharedSecret(self.__other)),
+            self.__root_chain.next(self.__key.getSharedSecret(self.__other)),
             chain
         )
 

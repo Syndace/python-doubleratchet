@@ -5,7 +5,7 @@ with open("README.md") as f:
 
 setup(
     name = "DoubleRatchet",
-    version = "0.2.0",
+    version = "0.3.0",
     description = "A python implementation of the Double Ratchet algorithm.",
     long_description = long_description,
     long_description_content_type = "text/markdown",

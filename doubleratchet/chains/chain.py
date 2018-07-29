@@ -1,5 +1,9 @@
-class EncryptionKeyPair(object):
-    def __init__(self, enc = None, dec = None):
+class Chain(object):
+    def next(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def length(self):
         raise NotImplementedError
 
     def serialize(self):
@@ -35,18 +39,3 @@ class EncryptionKeyPair(object):
         """
 
         return cls(*args, **kwargs)
-
-    @classmethod
-    def generate(cls):
-        raise NotImplementedError
-
-    def getSharedSecret(self, other):
-        raise NotImplementedError
-
-    @property
-    def enc(self):
-        raise NotImplementedError
-
-    @property
-    def dec(self):
-        raise NotImplementedError

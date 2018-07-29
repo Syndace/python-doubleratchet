@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 
 import doubleratchet
@@ -10,11 +12,24 @@ from nacl.public import PublicKey  as Curve25519EncryptionKey
 import pytest
 
 class SendReceiveChain(doubleratchet.chains.ConstKDFChain):
-    def __init__(self, key):
+    def __init__(self, key = None):
         super(SendReceiveChain, self).__init__(
-            key,
             doubleratchet.recommended.RootKeyKDF("SHA-512", "RootKeyKDF info string"),
-            "const_data".encode("US-ASCII")
+            "const_data".encode("US-ASCII"),
+            key
+        )
+
+    def serialize(self):
+        return {
+            "super": super(SendReceiveChain, self).serialize()
+        }
+
+    @classmethod
+    def fromSerialized(cls, serialized, *args, **kwargs):
+        return super(SendReceiveChain, cls).fromSerialized(
+            serialized["super"],
+            *args,
+            **kwargs
         )
 
 class SymmetricKeyRatchet(doubleratchet.ratchets.SymmetricKeyRatchet):
@@ -24,23 +39,37 @@ class SymmetricKeyRatchet(doubleratchet.ratchets.SymmetricKeyRatchet):
             SendReceiveChain
         )
 
-class DoubleRatchetConfig(doubleratchet.DoubleRatchetConfig):
-    def __init__(self):
-        super(DoubleRatchetConfig, self).__init__(
-            SymmetricKeyRatchet(),
-            doubleratchet.recommended.CBCHMACAEAD(
-                "SHA-512",
-                "ExampleCBCHMACAEADConfig"
-            ),
-            "some associated data".encode("US-ASCII"),
-            5
+    def serialize(self):
+        return {
+            "super": super(SymmetricKeyRatchet, self).serialize()
+        }
+
+    @classmethod
+    def fromSerialized(cls, serialized, *args, **kwargs):
+        return super(SymmetricKeyRatchet, cls).fromSerialized(
+            serialized["super"],
+            *args,
+            **kwargs
         )
 
 class RootChain(doubleratchet.chains.KDFChain):
     def __init__(self):
         super(RootChain, self).__init__(
-            "I am a root key!".encode("US-ASCII"),
-            doubleratchet.recommended.RootKeyKDF("SHA-512", "IAmARootChain")
+            doubleratchet.recommended.RootKeyKDF("SHA-512", "IAmARootChain"),
+            "I am a root key!".encode("US-ASCII")
+        )
+
+    def serialize(self):
+        return {
+            "super": super(RootChain, self).serialize()
+        }
+
+    @classmethod
+    def fromSerialized(cls, serialized, *args, **kwargs):
+        return super(RootChain, cls).fromSerialized(
+            serialized["super"],
+            *args,
+            **kwargs
         )
 
 class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
@@ -55,7 +84,7 @@ class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
 
     @staticmethod
     def __wrap(key, cls):
-        if not key:
+        if key == None:
             return None
 
         if isinstance(key, cls):
@@ -63,17 +92,52 @@ class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
 
         return cls(key)
 
+    def serialize(self):
+        enc = self.enc
+        enc = None if enc == None else base64.b64encode(bytes(enc)).decode("US-ASCII")
+
+        dec = self.dec
+        dec = None if dec == None else base64.b64encode(bytes(dec)).decode("US-ASCII")
+
+        return {
+            "super" : super(EncryptionKeyPair, self).serialize(),
+            "enc"   : enc,
+            "dec"   : dec
+        }
+
+    @classmethod
+    def fromSerialized(cls, serialized, *args, **kwargs):
+        self = super(EncryptionKeyPair, cls).fromSerialized(
+            serialized["super"],
+            *args,
+            **kwargs
+        )
+
+        if serialized["enc"] != None:
+            self.__enc = cls.__wrap(
+                base64.b64decode(serialized["enc"].encode("US-ASCII")),
+                Curve25519EncryptionKey
+            )
+
+        if serialized["dec"] != None:
+            self.__dec = cls.__wrap(
+                base64.b64decode(serialized["dec"].encode("US-ASCII")),
+                Curve25519DecryptionKey
+            )
+
+        return self
+
     @classmethod
     def generate(cls):
         return cls(dec = Curve25519DecryptionKey.generate())
 
     @property
     def enc(self):
-        return bytes(self.__enc) if self.__enc else None
+        return None if self.__enc == None else bytes(self.__enc)
 
     @property
     def dec(self):
-        return bytes(self.__dec) if self.__dec else None
+        return None if self.__dec == None else bytes(self.__dec)
 
     def getSharedSecret(self, other):
         if not self.__dec:
@@ -93,25 +157,46 @@ class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
             other.enc
         )
 
-class DHRatchetConfig(doubleratchet.DHRatchetConfig):
-    def __init__(self, own_key = None, other_enc = None):
-        super(DHRatchetConfig, self).__init__(
-            RootChain(),
+class DR(doubleratchet.ratchets.DoubleRatchet):
+    def __init__(self, own_key = None, other_enc = None, skr = None, root_chain = None):
+        if skr == None:
+            self.__skr = SymmetricKeyRatchet()
+        else:
+            self.__skr = skr
+
+        if root_chain == None:
+            self.__root_chain = RootChain()
+        else:
+            self.__root_chain = root_chain
+
+        super(DR, self).__init__(
+            self.__skr,
+            doubleratchet.recommended.CBCHMACAEAD(
+                "SHA-512",
+                "ExampleCBCHMACAEADConfig"
+            ),
+            "some associated data".encode("US-ASCII"),
+            5,
+            self.__root_chain,
             EncryptionKeyPair,
             own_key,
             other_enc
         )
 
-class Config(doubleratchet.Config):
-    def __init__(self, own_key = None, other_enc = None):
-        super(Config, self).__init__(
-            DoubleRatchetConfig(),
-            DHRatchetConfig(own_key, other_enc)
-        )
+    def serialize(self):
+        return {
+            "super"      : super(DR, self).serialize(),
+            "skr"        : self.__skr.serialize(),
+            "root_chain" : self.__root_chain.serialize()
+        }
 
-class DR(doubleratchet.ratchets.DoubleRatchet):
-    def __init__(self, own_key = None, other_enc = None):
-        super(DR, self).__init__(Config(own_key, other_enc))
+    @classmethod
+    def fromSerialized(cls, serialized):
+        return super(DR, cls).fromSerialized(
+            serialized["super"],
+            skr        = SymmetricKeyRatchet.fromSerialized(serialized["skr"]),
+            root_chain = RootChain.fromSerialized(serialized["root_chain"])
+        )
 
     def _makeAD(self, header, ad):
         return ad
@@ -182,3 +267,44 @@ def test_too_many_skipped_messages():
 
     with pytest.raises(doubleratchet.exceptions.TooManySavedMessageKeysException):
         alice_ratchet.decryptMessage(c["ciphertext"], c["header"])
+
+def test_serialization():
+    alice_key = EncryptionKeyPair.generate()
+    
+    alice_ratchet = DR(own_key   = alice_key)
+    bob_ratchet   = DR(other_enc = alice_key.enc)
+
+    for _ in range(100):
+        message = os.urandom(100)
+
+        c = bob_ratchet.encryptMessage(message)
+
+        assert alice_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
+
+        message = os.urandom(100)
+
+        c = alice_ratchet.encryptMessage(message)
+
+        assert bob_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
+
+    alice_ratchet_serialized = json.dumps(alice_ratchet.serialize())
+    bob_ratchet_serialized   = json.dumps(bob_ratchet.serialize())
+
+    print(alice_ratchet_serialized)
+    print(bob_ratchet_serialized)
+
+    alice_ratchet = DR.fromSerialized(json.loads(alice_ratchet_serialized))
+    bob_ratchet   = DR.fromSerialized(json.loads(bob_ratchet_serialized))
+
+    for _ in range(100):
+        message = os.urandom(100)
+
+        c = bob_ratchet.encryptMessage(message)
+
+        assert alice_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
+
+        message = os.urandom(100)
+
+        c = alice_ratchet.encryptMessage(message)
+
+        assert bob_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
