@@ -33,7 +33,7 @@ class DoubleRatchet(DHRatchet):
 
         for key, value in self.__saved_message_keys.items():
             key = json.dumps({
-                "enc"   : key[0].serialize(),
+                "enc"   : base64.b64encode(key[0]).decode("US-ASCII"),
                 "index" : key[1]
             })
 
@@ -57,7 +57,7 @@ class DoubleRatchet(DHRatchet):
         for key, value in serialized["smks"].items():
             key = json.loads(key)
 
-            enc = self._EncryptionKeyPair.fromSerialized(key["enc"])
+            enc   = base64.b64decode(key["enc"].encode("US-ASCII"))
             index = key["index"]
 
             smks[(enc, index)] = base64.b64decode(value.encode("US-ASCII"))
