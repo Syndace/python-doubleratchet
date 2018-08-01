@@ -73,7 +73,7 @@ class DoubleRatchet(DHRatchet):
 
         self.__skr.step(key, chain)
 
-    def decryptMessage(self, ciphertext, header, ad = None):
+    def decryptMessage(self, ciphertext, header, ad = None, _DEBUG_newRatchetKey = None):
         if ad == None:
             ad = self.__ad
 
@@ -88,7 +88,7 @@ class DoubleRatchet(DHRatchet):
             self.__saveMessageKeys(header.pn)
 
             # Perform the step
-            self.step(header.dh_enc)
+            self.step(header.dh_enc, _DEBUG_newRatchetKey = _DEBUG_newRatchetKey)
 
         # Save missed message keys for the current receiving chain
         self.__saveMessageKeys(header.n)

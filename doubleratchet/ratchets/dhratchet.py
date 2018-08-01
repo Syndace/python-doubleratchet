@@ -45,11 +45,22 @@ class DHRatchet(Ratchet):
 
         return self
 
-    def step(self, other_enc):
+    def step(self, other_enc, _DEBUG_newRatchetKey = None):
         if self.triggersStep(other_enc):
             self.__wrapOtherEnc(other_enc)
             self.__newRootKey("receiving")
-            self.__newRatchetKey()
+
+            if _DEBUG_newRatchetKey == None:
+                self.__newRatchetKey()
+            else:
+                import logging
+
+                logging.getLogger("doubleratchet.ratchets.dhratchet").error(
+                    "WARNING: RUNNING UNSAFE DEBUG-ONLY OPERATION"
+                )
+
+                self.__key = _DEBUG_newRatchetKey
+
             self.__newRootKey("sending")
 
     def __wrapOtherEnc(self, other_enc):
