@@ -6,23 +6,23 @@ class DHRatchet(Ratchet):
     def __init__(
         self,
         root_chain,
-        encryption_key_pair_class,
+        key_pair_class,
         own_key = None,
-        other_enc = None
+        other_pub = None
     ):
         super(DHRatchet, self).__init__()
 
         self.__root_chain = root_chain
-        self._EncryptionKeyPair = encryption_key_pair_class
+        self._KeyPair = key_pair_class
 
         if own_key:
             self.__key = own_key
         else:
             self.__newRatchetKey()
 
-        self.__wrapOtherEnc(other_enc)
+        self.__wrapOtherPub(other_pub)
 
-        if self.__other.enc:
+        if self.__other.pub:
             self.__newRootKey("sending")
 
     def serialize(self):
@@ -40,14 +40,14 @@ class DHRatchet(Ratchet):
             **kwargs
         )
 
-        self.__key   = self._EncryptionKeyPair.fromSerialized(serialized["key"])
-        self.__other = self._EncryptionKeyPair.fromSerialized(serialized["other"])
+        self.__key   = self._KeyPair.fromSerialized(serialized["key"])
+        self.__other = self._KeyPair.fromSerialized(serialized["other"])
 
         return self
 
-    def step(self, other_enc, _DEBUG_newRatchetKey = None):
-        if self.triggersStep(other_enc):
-            self.__wrapOtherEnc(other_enc)
+    def step(self, other_pub, _DEBUG_newRatchetKey = None):
+        if self.triggersStep(other_pub):
+            self.__wrapOtherPub(other_pub)
             self.__newRootKey("receiving")
 
             if _DEBUG_newRatchetKey == None:
@@ -63,14 +63,14 @@ class DHRatchet(Ratchet):
 
             self.__newRootKey("sending")
 
-    def __wrapOtherEnc(self, other_enc):
-        self.__other = self._EncryptionKeyPair(enc = other_enc)
+    def __wrapOtherPub(self, other_pub):
+        self.__other = self._KeyPair(pub = other_pub)
 
     def __newRatchetKey(self):
-        self.__key = self._EncryptionKeyPair.generate()
+        self.__key = self._KeyPair()
 
-    def triggersStep(self, other_enc):
-        return other_enc != self.__other.enc
+    def triggersStep(self, other_pub):
+        return other_pub != self.__other.pub
 
     def __newRootKey(self, chain):
         self._onNewChainKey(
@@ -82,9 +82,9 @@ class DHRatchet(Ratchet):
         raise NotImplementedError
 
     @property
-    def enc(self):
-        return self.__key.enc
+    def pub(self):
+        return self.__key.pub
 
     @property
-    def other_enc(self):
-        return self.__other.enc
+    def other_pub(self):
+        return self.__other.pub

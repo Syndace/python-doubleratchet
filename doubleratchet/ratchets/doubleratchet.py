@@ -33,7 +33,7 @@ class DoubleRatchet(DHRatchet):
 
         for key, value in self.__saved_message_keys.items():
             key = json.dumps({
-                "enc"   : base64.b64encode(key[0]).decode("US-ASCII"),
+                "pub"   : base64.b64encode(key[0]).decode("US-ASCII"),
                 "index" : key[1]
             })
 
@@ -57,10 +57,10 @@ class DoubleRatchet(DHRatchet):
         for key, value in serialized["smks"].items():
             key = json.loads(key)
 
-            enc   = base64.b64decode(key["enc"].encode("US-ASCII"))
+            pub   = base64.b64decode(key["pub"].encode("US-ASCII"))
             index = key["index"]
 
-            smks[(enc, index)] = base64.b64decode(value.encode("US-ASCII"))
+            smks[(pub, index)] = base64.b64decode(value.encode("US-ASCII"))
 
         self.__saved_message_keys = smks
 
@@ -83,12 +83,12 @@ class DoubleRatchet(DHRatchet):
             return plaintext
 
         # Check, whether the public key will trigger a dh ratchet step
-        if self.triggersStep(header.dh_enc):
+        if self.triggersStep(header.dh_pub):
             # Save missed message keys for the current receiving chain
             self.__saveMessageKeys(header.pn)
 
             # Perform the step
-            self.step(header.dh_enc, _DEBUG_newRatchetKey = _DEBUG_newRatchetKey)
+            self.step(header.dh_pub, _DEBUG_newRatchetKey = _DEBUG_newRatchetKey)
 
         # Save missed message keys for the current receiving chain
         self.__saveMessageKeys(header.n)
@@ -107,13 +107,13 @@ class DoubleRatchet(DHRatchet):
     def __decryptSavedMessage(self, ciphertext, header, ad):
         try:
             # Search for a saved key for this message
-            key = self.__saved_message_keys[(header.dh_enc, header.n)]
+            key = self.__saved_message_keys[(header.dh_pub, header.n)]
         except KeyError:
             # If there was no message key saved for this message, return None
             return None
 
         # Delete the entry
-        del self.__saved_message_keys[(header.dh_enc, header.n)]
+        del self.__saved_message_keys[(header.dh_pub, header.n)]
 
         # Finally decrypt the message and return the plaintext
         return self.__decrypt(ciphertext, key, header, ad)
@@ -133,7 +133,7 @@ class DoubleRatchet(DHRatchet):
             next_key  = self.__skr.nextDecryptionKey()
             key_index = self.__skr.receiving_chain_length - 1
 
-            self.__saved_message_keys[(self.other_enc, key_index)] = next_key
+            self.__saved_message_keys[(self.other_pub, key_index)] = next_key
 
     def encryptMessage(self, message, ad = None):
         if ad == None:
@@ -141,7 +141,7 @@ class DoubleRatchet(DHRatchet):
 
         # Prepare the header for this message
         header = Header(
-            self.enc,
+            self.pub,
             self.__skr.sending_chain_length,
             self.__skr.previous_sending_chain_length
         )

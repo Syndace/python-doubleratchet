@@ -6,6 +6,6 @@ from . import ratchets
 from . import recommended
 
 from .aead import AEAD
-from .encryptionkeypair import EncryptionKeyPair
 from .header import Header
 from .kdf import KDF
+from .keypair import KeyPair

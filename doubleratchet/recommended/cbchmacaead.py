@@ -12,13 +12,46 @@ import hashlib
 import hmac
 
 class CBCHMACAEAD(AEAD):
+    """
+    An implementation of the AEAD interface based on a recommendation by WhisperSystems:
+
+    HKDF is used with SHA-256 or SHA-512 to generate 80 bytes of output. The HKDF salt is
+    set to a zero-filled byte sequence equal to the hash's output length. HKDF input key
+    material is set to mk. HKDF info is set to an application-specific byte sequence
+    distinct from other uses of HKDF in the application.
+
+    The HKDF output is divided into a 32-byte encryption key, a 32-byte authentication
+    key, and a 16-byte IV.
+
+    The plaintext is encrypted using AES-256 in CBC mode with PKCS#7 padding, using the
+    encryption key and IV from the previous step.
+
+    HMAC is calculated using the authentication key and the same hash function as above.
+    The HMAC input is the associated_data prepended to the ciphertext. The HMAC output is
+    appended to the ciphertext.
+    """
+
     HASH_FUNCTIONS = {
         "SHA-256": hashlib.sha256,
         "SHA-512": hashlib.sha512
     }
 
     def __init__(self, hash_function, info_string):
+        """
+        Prepare a CBCHMACAEAD, following a recommendation by WhisperSystems.
+
+        :param hash_function: One of (the strings) "SHA-256" and "SHA-512".
+        :param info_string: A bytes-like object encoding a string unique to this usage
+            within the application.
+        """
+
         super(CBCHMACAEAD, self).__init__()
+
+        if not hash_function in RootKeyKDF.HASH_FUNCTIONS:
+            raise ValueError("Invalid value passed for the hash_function parameter.")
+
+        if not isinstance(info_string, bytes):
+            raise TypeError("Wrong type passed for the info_string parameter.")
 
         self.__hash_function = CBCHMACAEAD.HASH_FUNCTIONS[hash_function]
         self.__digest_size = self.__hash_function().digest_size
@@ -32,7 +65,7 @@ class CBCHMACAEAD(AEAD):
         # Get 80 bytes from the HKDF calculation
         hkdf_out = hkdf_expand(
             hkdf_extract(salt, message_key, self.__hash_function),
-            self.__info_string.encode("ASCII"),
+            self.__info_string,
             80,
             self.__hash_function
         )
@@ -62,10 +95,8 @@ class CBCHMACAEAD(AEAD):
         return ciphertext + auth.digest()
 
     def decrypt(self, ciphertext, message_key, ad):
-        auth_size = self.__hash_function().digest_size
-
-        auth       = ciphertext[-auth_size:]
-        ciphertext = ciphertext[:-auth_size]
+        auth       = ciphertext[-self.__digest_size:]
+        ciphertext = ciphertext[:-self.__digest_size]
 
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 

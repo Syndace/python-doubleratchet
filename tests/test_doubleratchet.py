@@ -72,7 +72,7 @@ class RootChain(doubleratchet.chains.KDFChain):
             **kwargs
         )
 
-class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
+class KeyPair(doubleratchet.KeyPair):
     def __init__(self, enc = None, dec = None):
         wrap = self.__class__.__wrap
 
@@ -100,14 +100,14 @@ class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
         dec = None if dec == None else base64.b64encode(bytes(dec)).decode("US-ASCII")
 
         return {
-            "super" : super(EncryptionKeyPair, self).serialize(),
+            "super" : super(KeyPair, self).serialize(),
             "enc"   : enc,
             "dec"   : dec
         }
 
     @classmethod
     def fromSerialized(cls, serialized, *args, **kwargs):
-        self = super(EncryptionKeyPair, cls).fromSerialized(
+        self = super(KeyPair, cls).fromSerialized(
             serialized["super"],
             *args,
             **kwargs
@@ -142,14 +142,12 @@ class EncryptionKeyPair(doubleratchet.EncryptionKeyPair):
     def getSharedSecret(self, other):
         if not self.__dec:
             raise MissingKeyException(
-                "Cannot get a shared secret using this EncryptionKeyPairCurve25519, " +
-                "decryption key missing."
+                "Cannot get a shared secret using this KeyPair, private key missing."
             )
 
         if not other.__enc:
             raise MissingKeyException(
-                "Cannot get a shared secret using the other " +
-                "EncryptionKeyPairCurve25519, encryption key missing"
+                "Cannot get a shared secret using the other KeyPair, public key missing."
             )
 
         return crypto_scalarmult(
@@ -178,7 +176,7 @@ class DR(doubleratchet.ratchets.DoubleRatchet):
             "some associated data".encode("US-ASCII"),
             5,
             self.__root_chain,
-            EncryptionKeyPair,
+            KeyPair,
             own_key,
             other_enc
         )
@@ -202,7 +200,7 @@ class DR(doubleratchet.ratchets.DoubleRatchet):
         return ad
 
 def test_messages():
-    alice_key = EncryptionKeyPair.generate()
+    alice_key = KeyPair()
     
     alice_ratchet = DR(own_key   = alice_key)
     bob_ratchet   = DR(other_enc = alice_key.enc)
@@ -221,14 +219,14 @@ def test_messages():
         assert bob_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
 
 def test_not_synced():
-    alice_key = EncryptionKeyPair.generate()
+    alice_key = KeyPair()
     alice_ratchet = DR(own_key = alice_key)
 
     with pytest.raises(doubleratchet.exceptions.NotInitializedException):
         alice_ratchet.encryptMessage("I will fail!".encode("US-ASCII"))
 
 def test_skipped_message():
-    alice_key = EncryptionKeyPair.generate()
+    alice_key = KeyPair()
     
     alice_ratchet = DR(own_key   = alice_key)
     bob_ratchet   = DR(other_enc = alice_key.enc)
@@ -253,7 +251,7 @@ def test_skipped_message():
         assert bob_ratchet.decryptMessage(c_a["ciphertext"], c_a["header"]) == message_a
 
 def test_too_many_skipped_messages():
-    alice_key = EncryptionKeyPair.generate()
+    alice_key = KeyPair()
     
     alice_ratchet = DR(own_key   = alice_key)
     bob_ratchet   = DR(other_enc = alice_key.enc)
@@ -269,7 +267,7 @@ def test_too_many_skipped_messages():
         alice_ratchet.decryptMessage(c["ciphertext"], c["header"])
 
 def test_serialization():
-    alice_key = EncryptionKeyPair.generate()
+    alice_key = KeyPair()
     
     alice_ratchet = DR(own_key   = alice_key)
     bob_ratchet   = DR(other_enc = alice_key.enc)
