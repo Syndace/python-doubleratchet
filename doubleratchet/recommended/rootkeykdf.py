@@ -2,9 +2,9 @@ from __future__ import absolute_import
 
 from ..kdf import KDF
 
-from hkdf import hkdf_expand, hkdf_extract
-
-import hashlib
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 class RootKeyKDF(KDF):
     """
@@ -16,9 +16,11 @@ class RootKeyKDF(KDF):
     uses of HKDF in the application.
     """
 
+    CRYPTOGRAPHY_BACKEND = default_backend()
+
     HASH_FUNCTIONS = {
-        "SHA-256": hashlib.sha256,
-        "SHA-512": hashlib.sha512
+        "SHA-256": hashes.SHA256,
+        "SHA-512": hashes.SHA512
     }
 
     def __init__(self, hash_function, info_string):
@@ -42,9 +44,10 @@ class RootKeyKDF(KDF):
         self.__info_string   = info_string
     
     def calculate(self, key, data, length):
-        return hkdf_expand(
-            hkdf_extract(key, data, self.__hash_function),
-            self.__info_string,
-            length,
-            self.__hash_function
-        )
+        return HKDF(
+            algorithm = self.__hash_function(),
+            length    = length,
+            salt      = key,
+            info      = self.__info_string,
+            backend   = self.__class__.CRYPTOGRAPHY_BACKEND
+        ).derive(data)

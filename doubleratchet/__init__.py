@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
-from . import chains
+from .version import __version__
+
 from . import exceptions
+from . import kdfchains
 from . import ratchets
 from . import recommended
 

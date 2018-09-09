@@ -11,10 +11,13 @@ from nacl.public import PublicKey  as Curve25519EncryptionKey
 
 import pytest
 
-class SendReceiveChain(doubleratchet.chains.ConstKDFChain):
+class SendReceiveChain(doubleratchet.kdfchains.ConstKDFChain):
     def __init__(self, key = None):
         super(SendReceiveChain, self).__init__(
-            doubleratchet.recommended.RootKeyKDF("SHA-512", "RootKeyKDF info string"),
+            doubleratchet.recommended.RootKeyKDF(
+                "SHA-512",
+                "RootKeyKDF info string".encode("US-ASCII")
+            ),
             "const_data".encode("US-ASCII"),
             key
         )
@@ -52,10 +55,13 @@ class SymmetricKeyRatchet(doubleratchet.ratchets.SymmetricKeyRatchet):
             **kwargs
         )
 
-class RootChain(doubleratchet.chains.KDFChain):
+class RootChain(doubleratchet.kdfchains.KDFChain):
     def __init__(self):
         super(RootChain, self).__init__(
-            doubleratchet.recommended.RootKeyKDF("SHA-512", "IAmARootChain"),
+            doubleratchet.recommended.RootKeyKDF(
+                "SHA-512",
+                "IAmARootChain".encode("US-ASCII")
+            ),
             "I am a root key!".encode("US-ASCII")
         )
 
@@ -73,14 +79,18 @@ class RootChain(doubleratchet.chains.KDFChain):
         )
 
 class KeyPair(doubleratchet.KeyPair):
-    def __init__(self, enc = None, dec = None):
+    def __init__(self, priv = None, pub = None):
         wrap = self.__class__.__wrap
 
-        self.__enc = wrap(enc, Curve25519EncryptionKey)
-        self.__dec = wrap(dec, Curve25519DecryptionKey)
+        self.__priv = wrap(priv, Curve25519DecryptionKey)
+        self.__pub  = wrap(pub,  Curve25519EncryptionKey)
 
-        if self.__dec and not self.__enc:
-            self.__enc = self.__dec.public_key
+        if not self.__priv == None and self.__pub == None:
+            self.__pub = self.__priv.public_key
+
+    @classmethod
+    def generate(cls):
+        return cls(priv = Curve25519DecryptionKey.generate())
 
     @staticmethod
     def __wrap(key, cls):
@@ -93,16 +103,16 @@ class KeyPair(doubleratchet.KeyPair):
         return cls(key)
 
     def serialize(self):
-        enc = self.enc
-        enc = None if enc == None else base64.b64encode(bytes(enc)).decode("US-ASCII")
+        pub = self.pub
+        pub = None if pub == None else base64.b64encode(bytes(pub)).decode("US-ASCII")
 
-        dec = self.dec
-        dec = None if dec == None else base64.b64encode(bytes(dec)).decode("US-ASCII")
+        priv = self.priv
+        priv = None if priv == None else base64.b64encode(bytes(priv)).decode("US-ASCII")
 
         return {
             "super" : super(KeyPair, self).serialize(),
-            "enc"   : enc,
-            "dec"   : dec
+            "pub"   : pub,
+            "priv"  : priv
         }
 
     @classmethod
@@ -113,50 +123,46 @@ class KeyPair(doubleratchet.KeyPair):
             **kwargs
         )
 
-        if serialized["enc"] != None:
-            self.__enc = cls.__wrap(
-                base64.b64decode(serialized["enc"].encode("US-ASCII")),
+        if serialized["pub"] != None:
+            self.__pub = cls.__wrap(
+                base64.b64decode(serialized["pub"].encode("US-ASCII")),
                 Curve25519EncryptionKey
             )
 
-        if serialized["dec"] != None:
-            self.__dec = cls.__wrap(
-                base64.b64decode(serialized["dec"].encode("US-ASCII")),
+        if serialized["priv"] != None:
+            self.__priv = cls.__wrap(
+                base64.b64decode(serialized["priv"].encode("US-ASCII")),
                 Curve25519DecryptionKey
             )
 
         return self
 
-    @classmethod
-    def generate(cls):
-        return cls(dec = Curve25519DecryptionKey.generate())
+    @property
+    def pub(self):
+        return None if self.__pub == None else bytes(self.__pub)
 
     @property
-    def enc(self):
-        return None if self.__enc == None else bytes(self.__enc)
-
-    @property
-    def dec(self):
-        return None if self.__dec == None else bytes(self.__dec)
+    def priv(self):
+        return None if self.__priv == None else bytes(self.__priv)
 
     def getSharedSecret(self, other):
-        if not self.__dec:
+        if self.__priv == None:
             raise MissingKeyException(
                 "Cannot get a shared secret using this KeyPair, private key missing."
             )
 
-        if not other.__enc:
+        if other.__pub == None:
             raise MissingKeyException(
                 "Cannot get a shared secret using the other KeyPair, public key missing."
             )
 
         return crypto_scalarmult(
-            self.dec,
-            other.enc
+            self.priv,
+            other.pub
         )
 
 class DR(doubleratchet.ratchets.DoubleRatchet):
-    def __init__(self, own_key = None, other_enc = None, skr = None, root_chain = None):
+    def __init__(self, own_key = None, other_pub = None, skr = None, root_chain = None):
         if skr == None:
             self.__skr = SymmetricKeyRatchet()
         else:
@@ -171,14 +177,14 @@ class DR(doubleratchet.ratchets.DoubleRatchet):
             self.__skr,
             doubleratchet.recommended.CBCHMACAEAD(
                 "SHA-512",
-                "ExampleCBCHMACAEADConfig"
+                "ExampleCBCHMACAEADConfig".encode("US-ASCII")
             ),
             "some associated data".encode("US-ASCII"),
             5,
             self.__root_chain,
             KeyPair,
             own_key,
-            other_enc
+            other_pub
         )
 
     def serialize(self):
@@ -200,10 +206,10 @@ class DR(doubleratchet.ratchets.DoubleRatchet):
         return ad
 
 def test_messages():
-    alice_key = KeyPair()
-    
+    alice_key = KeyPair.generate()
+
     alice_ratchet = DR(own_key   = alice_key)
-    bob_ratchet   = DR(other_enc = alice_key.enc)
+    bob_ratchet   = DR(other_pub = alice_key.pub)
 
     for _ in range(100):
         message = os.urandom(100)
@@ -219,17 +225,17 @@ def test_messages():
         assert bob_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
 
 def test_not_synced():
-    alice_key = KeyPair()
+    alice_key     = KeyPair.generate()
     alice_ratchet = DR(own_key = alice_key)
 
     with pytest.raises(doubleratchet.exceptions.NotInitializedException):
         alice_ratchet.encryptMessage("I will fail!".encode("US-ASCII"))
 
 def test_skipped_message():
-    alice_key = KeyPair()
+    alice_key = KeyPair.generate()
     
     alice_ratchet = DR(own_key   = alice_key)
-    bob_ratchet   = DR(other_enc = alice_key.enc)
+    bob_ratchet   = DR(other_pub = alice_key.pub)
 
     for _ in range(100):
         message_a = os.urandom(100)
@@ -251,10 +257,10 @@ def test_skipped_message():
         assert bob_ratchet.decryptMessage(c_a["ciphertext"], c_a["header"]) == message_a
 
 def test_too_many_skipped_messages():
-    alice_key = KeyPair()
+    alice_key = KeyPair.generate()
     
     alice_ratchet = DR(own_key   = alice_key)
-    bob_ratchet   = DR(other_enc = alice_key.enc)
+    bob_ratchet   = DR(other_pub = alice_key.pub)
 
     # Skip six messages (five skipped messages are allowed)
     for _ in range(6):
@@ -267,10 +273,10 @@ def test_too_many_skipped_messages():
         alice_ratchet.decryptMessage(c["ciphertext"], c["header"])
 
 def test_serialization():
-    alice_key = KeyPair()
+    alice_key = KeyPair.generate()
     
     alice_ratchet = DR(own_key   = alice_key)
-    bob_ratchet   = DR(other_enc = alice_key.enc)
+    bob_ratchet   = DR(other_pub = alice_key.pub)
 
     for _ in range(100):
         message = os.urandom(100)

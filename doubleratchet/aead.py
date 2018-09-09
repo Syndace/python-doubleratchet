@@ -25,6 +25,8 @@ class AEAD(object):
         :param key: A bytes-like object encoding the key to decrypt with.
         :param ad: A bytes-like object encoding the associated data to authenticate with.
         :returns: A bytes-like object encoding the decrypted data (the plaintext).
+        :raises AuthenticationFailedException: If the message could not be authenticated
+            using the associated data.
         """
 
         raise NotImplementedError

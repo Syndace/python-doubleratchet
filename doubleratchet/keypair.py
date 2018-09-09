@@ -10,16 +10,23 @@ class KeyPair(object):
 
         :param priv: The private key as a bytes-like object or None.
         :param pub: The public key as a bytes-like object or None.
+        """
 
-        If both the private and the public key are None, a new KeyPair gets generated.
+        raise NotImplementedError
+
+    @classmethod
+    def generate(cls):
+        """
+        :returns: A new key pair with private and public key set.
         """
 
         raise NotImplementedError
 
     def serialize(self):
         """
-        Return a serializable Python structure, which contains all the state information
-        of this object.
+        :returns: A serializable Python structure, which contains all the state
+            information of this object.
+
         Use together with the fromSerialized method.
         Here, "serializable" means, that the structure consists of any combination of the
         following types:
@@ -38,8 +45,10 @@ class KeyPair(object):
     @classmethod
     def fromSerialized(cls, serialized, *args, **kwargs):
         """
-        Return a new instance that was set to the state that was saved into the serialized
-        object.
+        :param serialized: A serializable Python object.
+        :returns: Return a new instance that was set to the state that was saved into the
+            serialized object.
+
         Use together with the serialize method.
         Notice: You have to pass all positional parameters required by the constructor of
         the class you call fromSerialized on.
@@ -50,7 +59,7 @@ class KeyPair(object):
     @property
     def priv(self):
         """
-        Return a bytes-like object representing the private key.
+        :returns: A bytes-like object encoding the private key of this key pair instance.
         """
 
         raise NotImplementedError
@@ -58,7 +67,7 @@ class KeyPair(object):
     @property
     def pub(self):
         """
-        Return a bytes-like object representing the public key.
+        :returns: A bytes-like object encoding the public key of this key pair instance.
         """
 
         raise NotImplementedError

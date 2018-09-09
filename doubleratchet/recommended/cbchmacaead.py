@@ -3,13 +3,11 @@ from __future__ import absolute_import
 from ..aead import AEAD
 from ..exceptions import AuthenticationFailedException
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
-from hkdf import hkdf_expand, hkdf_extract
-
-import hashlib
-import hmac
+from cryptography.hazmat.primitives import hashes, hmac, padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 class CBCHMACAEAD(AEAD):
     """
@@ -31,9 +29,11 @@ class CBCHMACAEAD(AEAD):
     appended to the ciphertext.
     """
 
+    CRYPTOGRAPHY_BACKEND = default_backend()
+
     HASH_FUNCTIONS = {
-        "SHA-256": hashlib.sha256,
-        "SHA-512": hashlib.sha512
+        "SHA-256": hashes.SHA256,
+        "SHA-512": hashes.SHA512
     }
 
     def __init__(self, hash_function, info_string):
@@ -47,7 +47,7 @@ class CBCHMACAEAD(AEAD):
 
         super(CBCHMACAEAD, self).__init__()
 
-        if not hash_function in RootKeyKDF.HASH_FUNCTIONS:
+        if not hash_function in CBCHMACAEAD.HASH_FUNCTIONS:
             raise ValueError("Invalid value passed for the hash_function parameter.")
 
         if not isinstance(info_string, bytes):
@@ -63,18 +63,23 @@ class CBCHMACAEAD(AEAD):
         salt = b"\x00" * self.__digest_size
 
         # Get 80 bytes from the HKDF calculation
-        hkdf_out = hkdf_expand(
-            hkdf_extract(salt, message_key, self.__hash_function),
-            self.__info_string,
-            80,
-            self.__hash_function
-        )
+        hkdf_out = HKDF(
+            algorithm = self.__hash_function(),
+            length    = 80,
+            salt      = salt,
+            info      = self.__info_string,
+            backend   = self.__class__.CRYPTOGRAPHY_BACKEND
+        ).derive(message_key)
 
         # Split these 80 bytes in three parts
         return hkdf_out[:32], hkdf_out[32:64], hkdf_out[64:]
 
     def __getAES(self, key, iv):
-        return Cipher(algorithms.AES(key), modes.CBC(iv), backend = default_backend())
+        return Cipher(
+            algorithms.AES(key),
+            modes.CBC(iv),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
 
     def encrypt(self, plaintext, message_key, ad):
         encryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
@@ -89,10 +94,16 @@ class CBCHMACAEAD(AEAD):
         ciphertext = aes_cbc.update(plaintext) + aes_cbc.finalize()
 
         # Build the authentication
-        auth = hmac.new(authentication_key, ad + ciphertext, self.__hash_function)
+        auth = hmac.HMAC(
+            authentication_key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
+
+        auth.update(ad + ciphertext)
 
         # Append the authentication to the ciphertext
-        return ciphertext + auth.digest()
+        return ciphertext + auth.finalize()
 
     def decrypt(self, ciphertext, message_key, ad):
         auth       = ciphertext[-self.__digest_size:]
@@ -100,9 +111,17 @@ class CBCHMACAEAD(AEAD):
 
         decryption_key, authentication_key, iv = self.__getHKDFOutput(message_key)
 
-        new_auth = hmac.new(authentication_key, ad + ciphertext, self.__hash_function)
+        new_auth = hmac.HMAC(
+            authentication_key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
 
-        if not hmac.compare_digest(auth, new_auth.digest()):
+        new_auth.update(ad + ciphertext)
+
+        try:
+            new_auth.verify(auth)
+        except InvalidSignature:
             raise AuthenticationFailedException()
 
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size),

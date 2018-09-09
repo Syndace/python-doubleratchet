@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 from ..kdf import KDF
 
-import hashlib
-import hmac
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac
 
 class ChainKeyKDF(KDF):
     """
@@ -17,9 +17,11 @@ class ChainKeyKDF(KDF):
     and the length parameters.
     """
 
+    CRYPTOGRAPHY_BACKEND = default_backend()
+
     HASH_FUNCTIONS = {
-        "SHA-256": hashlib.sha256,
-        "SHA-512": hashlib.sha512
+        "SHA-256": hashes.SHA256,
+        "SHA-512": hashes.SHA512
     }
 
     def __init__(self, hash_function, ck_constant = b"\x02", mk_constant = b"\x01"):
@@ -53,7 +55,20 @@ class ChainKeyKDF(KDF):
         self.__mk_constant = mk_constant
     
     def calculate(self, key, data = None, length = None):
-        chain_key   = hmac.new(key, self.__ck_constant, self.__hash_function)
-        message_key = hmac.new(key, self.__mk_constant, self.__hash_function)
+        chain_key = hmac.HMAC(
+            key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
 
-        return chain_key.digest() + message_key.digest()
+        chain_key.update(self.__ck_constant)
+
+        message_key = hmac.HMAC(
+            key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
+
+        message_key.update(self.__mk_constant)
+
+        return chain_key.finalize() + message_key.finalize()
