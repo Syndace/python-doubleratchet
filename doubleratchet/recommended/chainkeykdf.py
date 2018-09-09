@@ -2,40 +2,73 @@ from __future__ import absolute_import
 
 from ..kdf import KDF
 
-import hashlib
-import hmac
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac
 
 class ChainKeyKDF(KDF):
+    """
+    An implementations of the KDF interface based on a recommendation by WhisperSystems:
+
+    HMAC with SHA-256 or SHA-512 is recommended, using ck as the HMAC key and using
+    separate constants as input (e.g. a single byte 0x01 as input to produce the message
+    key, and a single byte 0x02 as input to produce the next chain key).
+
+    Notice: Following these recommendations, the calculate method ignored both the data
+    and the length parameters.
+    """
+
+    CRYPTOGRAPHY_BACKEND = default_backend()
+
     HASH_FUNCTIONS = {
-        "SHA-256": hashlib.sha256,
-        "SHA-512": hashlib.sha512
+        "SHA-256": hashes.SHA256,
+        "SHA-512": hashes.SHA512
     }
 
-    def __init__(self, hash_function, chain_key_constant, message_key_constant):
+    def __init__(self, hash_function, ck_constant = b"\x02", mk_constant = b"\x01"):
         """
-        The hash function parameter must be a key of ChainKeyKDF.HASH_FUNCTIONS
-        ("SHA-256" or "SHA-512").
+        Prepare a ChainKeyKDF, following a recommendation by WhisperSystems.
 
-        The constants should be single bytes for each type of calculation
-        (e.g. 0x01 as input to produce the message key, and a single byte 0x02 as input
-        to produce the next chain key)
+        :param hash_function: One of (the strings) "SHA-256" and "SHA-512".
+        :param ck_constant: A single byte used for derivation of the next chain key.
+        :param mk_constant: A single byte used for derivation of the next message key.
         """
 
         super(ChainKeyKDF, self).__init__()
 
+        if not hash_function in ChainKeyKDF.HASH_FUNCTIONS:
+            raise ValueError("Invalid value passed for the hash_function parameter.")
+
+        if not isinstance(ck_constant, bytes):
+            raise TypeError("Wrong type passed for the ck_constant parameter.")
+
+        if len(ck_constant) != 1:
+            raise ValueError("Invalid value passed for the ck_constant parameter.")
+
+        if not isinstance(mk_constant, bytes):
+            raise TypeError("Wrong type passed for the mk_constant parameter.")
+
+        if len(mk_constant) != 1:
+            raise ValueError("Invalid value passed for the mk_constant parameter.")
+
         self.__hash_function = ChainKeyKDF.HASH_FUNCTIONS[hash_function]
-        self.__chain_key_constant = chain_key_constant
-        self.__message_key_constant = message_key_constant
+        self.__ck_constant = ck_constant
+        self.__mk_constant = mk_constant
     
-    def calculate(self, key, data, length):
-        """
-        As recommended, use HMAC with either SHA-256 or SHA-512.
-        Supply the chain key as the HMAC key and a constant as input.
+    def calculate(self, key, data = None, length = None):
+        chain_key = hmac.HMAC(
+            key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
 
-        Ignore the data.
-        """
+        chain_key.update(self.__ck_constant)
 
-        chain_key   = hmac.new(key, self.__chain_key_constant,   self.__hash_function)
-        message_key = hmac.new(key, self.__message_key_constant, self.__hash_function)
+        message_key = hmac.HMAC(
+            key,
+            self.__hash_function(),
+            backend = self.__class__.CRYPTOGRAPHY_BACKEND
+        )
 
-        return chain_key.digest() + message_key.digest()
+        message_key.update(self.__mk_constant)
+
+        return chain_key.finalize() + message_key.finalize()
