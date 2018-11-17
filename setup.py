@@ -3,16 +3,26 @@ from setuptools import setup, find_packages
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "doubleratchet"))
+version_file_path = os.path.join(
+	os.path.dirname(os.path.abspath(__file__)),
+	"doubleratchet",
+	"version.py"
+)
 
-import version
+version = {}
+
+try:
+	execfile(version_file_path, version)
+except:
+	with open(version_file_path) as fp:
+		exec(fp.read(), version)
 
 with open("README.md") as f:
     long_description = f.read()
 
 setup(
     name = "DoubleRatchet",
-    version = version.__version__,
+    version = version["__version__"],
     description = "A python implementation of the Double Ratchet algorithm.",
     long_description = long_description,
     long_description_content_type = "text/markdown",
@@ -33,20 +43,6 @@ setup(
         "Topic :: Security :: Cryptography",
 
         "License :: OSI Approved :: MIT License",
-
-        "Operating System :: Microsoft :: Windows",
-        "Operating System :: Microsoft :: Windows :: Windows XP",
-        "Operating System :: Microsoft :: Windows :: Windows Vista",
-        "Operating System :: Microsoft :: Windows :: Windows 7",
-        "Operating System :: Microsoft :: Windows :: Windows 8",
-        "Operating System :: Microsoft :: Windows :: Windows 8.1",
-        "Operating System :: Microsoft :: Windows :: Windows 10",
-
-        "Operating System :: POSIX",
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: Unix",
-
-        "Programming Language :: Python :: Implementation :: CPython",
 
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
