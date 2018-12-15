@@ -16,18 +16,18 @@ class DHRatchet(Ratchet):
 
     def __init__(
         self,
-        root_chain,
         key_pair_class,
-        own_key = None,
+        root_chain,
+        own_key   = None,
         other_pub = None
     ):
         """
         Initialize a new Diffie-Hellman ratchet.
 
-        :param root_chain: A KDFChain, which receives the Diffie-Hellman key exchange
-            output to derive a new chain key.
         :param key_pair_class: An implementations of the KeyPair interface which is used
             for the Diffie-Hellman key management and shared secret calculations.
+        :param root_chain: A KDFChain, which receives the Diffie-Hellman key exchange
+            output to derive a new chain key.
         :param own_key: An instance of key_pair_class holding the first key pair to
             initialize this ratchet with or None.
         :param other_pub: A bytes-like object encoding the public key of the other
@@ -36,8 +36,8 @@ class DHRatchet(Ratchet):
 
         super(DHRatchet, self).__init__()
 
-        self.__root_chain = root_chain
         self._KeyPair = key_pair_class
+        self.__root_chain = root_chain
 
         if own_key:
             self.__key = own_key
@@ -51,9 +51,10 @@ class DHRatchet(Ratchet):
 
     def serialize(self):
         return {
-            "super" : super(DHRatchet, self).serialize(),
-            "key"   : self.__key.serialize(),
-            "other" : self.__other.serialize()
+            "super"      : super(DHRatchet, self).serialize(),
+            "root_chain" : self.__root_chain.serialize(),
+            "own_key"    : self.__key.serialize(),
+            "other_pub"  : self.__other.serialize()
         }
 
     @classmethod
@@ -64,8 +65,11 @@ class DHRatchet(Ratchet):
             **kwargs
         )
 
-        self.__key   = self._KeyPair.fromSerialized(serialized["key"])
-        self.__other = self._KeyPair.fromSerialized(serialized["other"])
+        RootChain = self.__root_chain.__class__
+
+        self.__root_chain = RootChain.fromSerialized(serialized["root_chain"])
+        self.__key        = self._KeyPair.fromSerialized(serialized["own_key"])
+        self.__other      = self._KeyPair.fromSerialized(serialized["other_pub"])
 
         return self
 

@@ -22,17 +22,6 @@ class ConstKDFChain(KDFChain):
 
         self.__constant = constant
 
-    def serialize(self):
-        return { "super": super(ConstKDFChain, self).serialize() }
-
-    @classmethod
-    def fromSerialized(cls, serialized, *args, **kwargs):
-        return super(ConstKDFChain, cls).fromSerialized(
-            serialized["super"],
-            *args,
-            **kwargs
-        )
-
     def next(self, data = None):
         """
         Use the key derivation function to derive new data. The kdf gets supplied with the

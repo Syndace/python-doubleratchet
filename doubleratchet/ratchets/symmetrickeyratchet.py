@@ -54,12 +54,14 @@ class SymmetricKeyRatchet(Ratchet):
 
         if serialized["schain"] != None:
             self.__sending_chain = self.__SendingChain.fromSerialized(
-                serialized["schain"]
+                serialized["schain"],
+                None
             )
 
         if serialized["rchain"] != None:
             self.__receiving_chain = self.__ReceivingChain.fromSerialized(
-                serialized["rchain"]
+                serialized["rchain"],
+                None
             )
 
         self.__previous_sending_chain_length = serialized["prev_schain_length"]

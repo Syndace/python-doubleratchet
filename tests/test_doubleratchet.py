@@ -12,7 +12,7 @@ from nacl.public import PublicKey  as Curve25519EncryptionKey
 import pytest
 
 class SendReceiveChain(doubleratchet.kdfchains.ConstKDFChain):
-    def __init__(self, key = None):
+    def __init__(self, key):
         super(SendReceiveChain, self).__init__(
             "const_data".encode("US-ASCII"),
             doubleratchet.recommended.RootKeyKDF(
@@ -22,37 +22,11 @@ class SendReceiveChain(doubleratchet.kdfchains.ConstKDFChain):
             key
         )
 
-    def serialize(self):
-        return {
-            "super": super(SendReceiveChain, self).serialize()
-        }
-
-    @classmethod
-    def fromSerialized(cls, serialized, *args, **kwargs):
-        return super(SendReceiveChain, cls).fromSerialized(
-            serialized["super"],
-            *args,
-            **kwargs
-        )
-
 class SymmetricKeyRatchet(doubleratchet.ratchets.SymmetricKeyRatchet):
     def __init__(self):
         super(SymmetricKeyRatchet, self).__init__(
             SendReceiveChain,
             SendReceiveChain
-        )
-
-    def serialize(self):
-        return {
-            "super": super(SymmetricKeyRatchet, self).serialize()
-        }
-
-    @classmethod
-    def fromSerialized(cls, serialized, *args, **kwargs):
-        return super(SymmetricKeyRatchet, cls).fromSerialized(
-            serialized["super"],
-            *args,
-            **kwargs
         )
 
 class RootChain(doubleratchet.kdfchains.KDFChain):
@@ -63,19 +37,6 @@ class RootChain(doubleratchet.kdfchains.KDFChain):
                 "IAmARootChain".encode("US-ASCII")
             ),
             "I am a root key!".encode("US-ASCII")
-        )
-
-    def serialize(self):
-        return {
-            "super": super(RootChain, self).serialize()
-        }
-
-    @classmethod
-    def fromSerialized(cls, serialized, *args, **kwargs):
-        return super(RootChain, cls).fromSerialized(
-            serialized["super"],
-            *args,
-            **kwargs
         )
 
 class KeyPair(doubleratchet.KeyPair):
@@ -162,44 +123,19 @@ class KeyPair(doubleratchet.KeyPair):
         )
 
 class DR(doubleratchet.ratchets.DoubleRatchet):
-    def __init__(self, own_key = None, other_pub = None, skr = None, root_chain = None):
-        if skr == None:
-            self.__skr = SymmetricKeyRatchet()
-        else:
-            self.__skr = skr
-
-        if root_chain == None:
-            self.__root_chain = RootChain()
-        else:
-            self.__root_chain = root_chain
-
+    def __init__(self, own_key = None, other_pub = None):
         super(DR, self).__init__(
-            self.__skr,
             doubleratchet.recommended.CBCHMACAEAD(
                 "SHA-512",
                 "ExampleCBCHMACAEADConfig".encode("US-ASCII")
             ),
-            "some associated data".encode("US-ASCII"),
             5,
-            self.__root_chain,
+            SymmetricKeyRatchet(),
+            "some associated data".encode("US-ASCII"),
             KeyPair,
+            RootChain(),
             own_key,
             other_pub
-        )
-
-    def serialize(self):
-        return {
-            "super"      : super(DR, self).serialize(),
-            "skr"        : self.__skr.serialize(),
-            "root_chain" : self.__root_chain.serialize()
-        }
-
-    @classmethod
-    def fromSerialized(cls, serialized):
-        return super(DR, cls).fromSerialized(
-            serialized["super"],
-            skr        = SymmetricKeyRatchet.fromSerialized(serialized["skr"]),
-            root_chain = RootChain.fromSerialized(serialized["root_chain"])
         )
 
     def _makeAD(self, header, ad):

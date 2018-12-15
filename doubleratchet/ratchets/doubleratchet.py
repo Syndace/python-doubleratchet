@@ -23,33 +23,33 @@ class DoubleRatchet(DHRatchet):
 
     def __init__(
         self,
-        symmetric_key_ratchet,
         aead,
-        ad,
         message_key_store_max,
+        symmetric_key_ratchet,
+        ad,
         *args,
         **kwargs
     ):
         """
         Initialize a new DoubleRatchet.
 
-        :param symmetric_key_ratchet: An instance of the SymmetricKeyRatchet class, which
-            is used to derive en- and decryption keys for message exchange.
         :param aead: An instance of an implementation of the AEAD interface, which is used
             to provice authenticated message encryption and is fed with the message keys
             derived using the symmetric key ratchet.
-        :param ad: Some associated data to use for message authentication, encoded as a
-            bytes-like object.
         :param message_key_store_max: An integer defining the maximum amount of message
             keys to store before raising an exception. This mechanism allows out-of-order
             messages, by storing message keys of out-of-order messages instead of
             discarding them.
+        :param symmetric_key_ratchet: An instance of the SymmetricKeyRatchet class, which
+            is used to derive en- and decryption keys for message exchange.
+        :param ad: Some associated data to use for message authentication, encoded as a
+            bytes-like object.
         """
 
-        self.__skr     = symmetric_key_ratchet
         self.__aead    = aead
-        self.__ad      = ad
         self.__mks_max = message_key_store_max
+        self.__skr     = symmetric_key_ratchet
+        self.__ad      = ad
 
         self.__saved_message_keys = {}
 
@@ -70,6 +70,8 @@ class DoubleRatchet(DHRatchet):
 
         return {
             "super" : super(DoubleRatchet, self).serialize(),
+            "skr"   : self.__skr.serialize(),
+            "ad"    : base64.b64encode(self.__ad).decode("US-ASCII"),
             "smks"  : smks
         }
 
@@ -80,6 +82,9 @@ class DoubleRatchet(DHRatchet):
             *args,
             **kwargs
         )
+
+        self.__skr = self.__skr.__class__.fromSerialized(serialized["skr"])
+        self.__ad  = base64.b64decode(serialized["ad"].encode("US-ASCII"))
 
         smks = {}
 
