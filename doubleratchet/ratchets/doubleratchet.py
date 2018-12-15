@@ -102,7 +102,7 @@ class DoubleRatchet(DHRatchet):
 
         self.__skr.step(key, chain)
 
-    def decryptMessage(self, ciphertext, header, ad = None, _DEBUG_newRatchetKey = None):
+    def decryptMessage(self, ciphertext, header, ad = None):
         """
         Decrypt a message using this double ratchet session.
 
@@ -135,7 +135,7 @@ class DoubleRatchet(DHRatchet):
             self.__saveMessageKeys(header.pn)
 
             # Perform the step
-            self.step(header.dh_pub, _DEBUG_newRatchetKey = _DEBUG_newRatchetKey)
+            self.step(header.dh_pub)
 
         # Save missed message keys for the current receiving chain
         self.__saveMessageKeys(header.n)

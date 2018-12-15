@@ -10,26 +10,20 @@ class ConstKDFChain(KDFChain):
     call to next.
     """
 
-    def __init__(self, kdf, constant, key = None):
+    def __init__(self, constant, *args, **kwargs):
         """
-        Initialize a ConstKDFChain using the provided key derivation function, constant
-        data and key.
+        Initialize a ConstKDFChain, which uses constant input data instead of passed data
+        on chains steps.
 
-        :param kdf: An instance of the KDF interface.
-        :param constant: The constant data to supply to the key derivation function on
-            every chain step.
-        :param key: A bytes-like object encoding the key to supply to the key derivation
-            function. This parameter MUST NOT be None.
+        :param constant: The constant data to pass to the next method on each step.
         """
 
-        super(ConstKDFChain, self).__init__(kdf, key)
+        super(ConstKDFChain, self).__init__(*args, **kwargs)
 
         self.__constant = constant
 
     def serialize(self):
-        return {
-            "super": super(ConstKDFChain, self).serialize()
-        }
+        return { "super": super(ConstKDFChain, self).serialize() }
 
     @classmethod
     def fromSerialized(cls, serialized, *args, **kwargs):

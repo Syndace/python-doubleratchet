@@ -6,6 +6,7 @@ doubleratchet
     Module: header <header>
     Module: keypair <keypair>
     Module: kdf <kdf>
+    Module: serializable <serializable>
 
     Package: kdfchains <kdfchains/package>
     Package: recommended <recommended/package>

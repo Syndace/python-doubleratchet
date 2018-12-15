@@ -11,3 +11,4 @@ from .aead import AEAD
 from .header import Header
 from .kdf import KDF
 from .keypair import KeyPair
+from .serializable import Serializable

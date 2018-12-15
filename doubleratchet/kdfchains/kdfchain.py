@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
+from ..serializable import Serializable
+
 import base64
 
-class KDFChain(object):
+class KDFChain(Serializable):
     """
     A key derivation function chain.
 
@@ -17,13 +19,13 @@ class KDFChain(object):
     backward.
     """
 
-    def __init__(self, kdf, key = None):
+    def __init__(self, kdf, key):
         """
         Initialize a KDFChain using the provided key derivation function and key.
 
         :param kdf: An instance of the KDF interface.
         :param key: A bytes-like object encoding the key to supply to the key derivation
-            function. This parameter MUST NOT be None.
+            function.
         """
 
         self.__length = 0
@@ -31,40 +33,13 @@ class KDFChain(object):
         self.__key = key
 
     def serialize(self):
-        """
-        :returns: A serializable Python structure, which contains all the state
-            information of this object.
-
-        Use together with the fromSerialized method.
-        Here, "serializable" means, that the structure consists of any combination of the
-        following types:
-
-        * dictionaries
-        * lists
-        * strings
-        * integers
-        * floats
-        * booleans
-        * None
-        """
-
         return {
-            "length": self.__length,
-            "key"   : base64.b64encode(self.__key).decode("US-ASCII")
+            "length" : self.__length,
+            "key"    : base64.b64encode(self.__key).decode("US-ASCII")
         }
 
     @classmethod
     def fromSerialized(cls, serialized, *args, **kwargs):
-        """
-        :param serialized: A serializable Python object.
-        :returns: Return a new instance that was set to the state that was saved into the
-            serialized object.
-
-        Use together with the serialize method.
-        Notice: You have to pass all positional parameters required by the constructor of
-        the class you call fromSerialized on.
-        """
-
         self = cls(*args, **kwargs)
         self.__length = serialized["length"]
         self.__key    = base64.b64decode(serialized["key"].encode("US-ASCII"))

@@ -14,11 +14,11 @@ import pytest
 class SendReceiveChain(doubleratchet.kdfchains.ConstKDFChain):
     def __init__(self, key = None):
         super(SendReceiveChain, self).__init__(
+            "const_data".encode("US-ASCII"),
             doubleratchet.recommended.RootKeyKDF(
                 "SHA-512",
                 "RootKeyKDF info string".encode("US-ASCII")
             ),
-            "const_data".encode("US-ASCII"),
             key
         )
 

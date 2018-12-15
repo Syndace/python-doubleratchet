@@ -69,7 +69,7 @@ class DHRatchet(Ratchet):
 
         return self
 
-    def step(self, other_pub, _DEBUG_newRatchetKey = None):
+    def step(self, other_pub):
         """
         Perform a rachted step, calculating a new shared secret from the public key and
         deriving new chain keys from this secret.
@@ -85,16 +85,7 @@ class DHRatchet(Ratchet):
             self.__wrapOtherPub(other_pub)
             self.__newRootKey("receiving")
 
-            if _DEBUG_newRatchetKey == None:
-                self.__newRatchetKey()
-            else:
-                import logging
-
-                logging.getLogger("doubleratchet.ratchets.dhratchet").error(
-                    "WARNING: RUNNING UNSAFE DEBUG-ONLY OPERATION"
-                )
-
-                self.__key = _DEBUG_newRatchetKey
+            self.__newRatchetKey()
 
             self.__newRootKey("sending")
 
