@@ -147,6 +147,9 @@ def test_messages():
     alice_ratchet = DR(own_key   = alice_key)
     bob_ratchet   = DR(other_pub = alice_key.pub)
 
+    assert not alice_ratchet.canSend()
+    assert bob_ratchet.canSend()
+
     for _ in range(100):
         message = os.urandom(100)
 
@@ -159,6 +162,9 @@ def test_messages():
         c = alice_ratchet.encryptMessage(message)
 
         assert bob_ratchet.decryptMessage(c["ciphertext"], c["header"]) == message
+
+    assert alice_ratchet.canSend()
+    assert bob_ratchet.canSend()
 
 def test_not_synced():
     alice_key     = KeyPair.generate()

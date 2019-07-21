@@ -107,6 +107,14 @@ class DoubleRatchet(DHRatchet):
 
         self.__skr.step(key, chain)
 
+    def canSend(self):
+        """
+        Returns whether this instance is capable of encrypting (sending) messages.
+        Internally checks whether a sending chain is present on the symmetric key ratchet.
+        """
+
+        return self.__skr.sending_chain_length is not None
+
     def decryptMessage(self, ciphertext, header, ad = None):
         """
         Decrypt a message using this double ratchet session.
