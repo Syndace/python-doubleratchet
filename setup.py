@@ -28,7 +28,7 @@ setup(
     long_description_content_type = "text/markdown",
     url = "https://github.com/Syndace/python-doubleratchet",
     author = "Tim Henkes",
-    author_email = "tim@cifg.io",
+    author_email = "me@syndace.dev",
     license = "MIT",
     packages = find_packages(),
     install_requires = [ "cryptography>=1.7.1" ],
