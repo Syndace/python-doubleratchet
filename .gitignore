@@ -1,11 +1,11 @@
+.eggs/
 build/
 dist/
 DoubleRatchet.egg-info/
-*.pyc
 
+*.pyc
 .pytest_cache/
+.mypy_cache/
 
 docs/_build/
-
-install.sh
-Makefile
+examples/*/

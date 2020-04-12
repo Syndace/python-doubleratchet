@@ -1,32 +1,47 @@
-class AEAD(object):
+from abc import ABCMeta, abstractmethod
+
+class AuthenticationFailedException(Exception):
+    pass
+
+class DecryptionFailedException(Exception):
+    pass
+
+class AEAD(metaclass=ABCMeta):
     """
     Authenticated Encryption with Associated Data (AEAD).
     """
 
-    def encrypt(self, plaintext, key, ad):
+    @staticmethod
+    @abstractmethod
+    def encrypt(plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
         """
-        Encrypt given plaintext using given key and authenticating using given associated
-        data.
+        Args:
+            plaintext: The plaintext to encrypt.
+            key: The encryption key.
+            associated_data: Additional data to authenticate without including it in the ciphertext.
 
-        :param plaintext: A bytes-like object encoding the data to encrypt.
-        :param key: A bytes-like object encoding the key to encrypt with.
-        :param ad: A bytes-like object encoding the associated data to authenticate with.
-        :returns: A bytes-like object encoding the encrypted data (the ciphertext).
-        """
-
-        raise NotImplementedError
-
-    def decrypt(self, ciphertext, key, ad):
-        """
-        Decrypt given ciphertext using given key and check validity of the authentication
-        using given associated data.
-
-        :param ciphertext: A bytes-like object encoding the data to decrypt.
-        :param key: A bytes-like object encoding the key to decrypt with.
-        :param ad: A bytes-like object encoding the associated data to authenticate with.
-        :returns: A bytes-like object encoding the decrypted data (the plaintext).
-        :raises AuthenticationFailedException: If the message could not be authenticated
-            using the associated data.
+        Returns:
+            The ciphertext.
         """
 
-        raise NotImplementedError
+        raise NotImplementedError("Create a subclass of AEAD and implement `encrypt`.")
+
+    @staticmethod
+    @abstractmethod
+    def decrypt(ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
+        """
+        Args:
+            ciphertext: The ciphertext to decrypt.
+            key: The decryption key.
+            associated_data: Additional data to authenticate without including it in the ciphertext.
+
+        Returns:
+            The plaintext.
+
+        Raises:
+            AuthenticationFailedException: If the message could not be authenticated using the associated
+                data.
+            DecryptionFailedException: If the decryption failed for a different reason (e.g. invalid padding).
+        """
+
+        raise NotImplementedError("Create a subclass of AEAD and implement `decrypt`.")

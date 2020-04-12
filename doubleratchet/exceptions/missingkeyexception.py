@@ -1,2 +1,0 @@
-class MissingKeyException(Exception):
-    pass

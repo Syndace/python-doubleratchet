@@ -1,16 +1,26 @@
-class KDF(object):
+from abc import ABCMeta, abstractmethod
+
+class KDF(metaclass=ABCMeta):
     """
-    A key derivation function.
+    A KDF is defined as a cryptographic function that takes a secret and random KDF key and some input data
+    and returns output data. The output data is indistinguishable from random provided the key isn't known
+    (i.e. a KDF satisfies the requirements of a cryptographic "PRF"). If the key is not secret and random, the
+    KDF should still provide a secure cryptographic hash of its key and input data.
+
+    https://signal.org/docs/specifications/doubleratchet/#kdf-chains
     """
 
-    def calculate(self, key, data, length):
+    @staticmethod
+    @abstractmethod
+    def derive(key: bytes, data: bytes, length: int) -> bytes:
         """
-        Use the key and the given input data to derive an output key of given length.
+        Args:
+            key: The KDF key.
+            data: The input data.
+            length: The desired size of the output data, in bytes.
 
-        :param key: A bytes-like object encoding the key to use for derivation.
-        :param data: A bytes-like object encoding the data to use for derivation.
-        :param length: The length of the key to derive, as an integer.
-        :returns: A bytes-like object with the requested length encoding the derived key.
+        Returns:
+            `length` bytes of output data, derived from the KDF key and the input data.
         """
 
-        raise NotImplementedError
+        raise NotImplementedError("Create a subclass of KDF and implement `derive`.")
