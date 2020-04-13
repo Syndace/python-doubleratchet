@@ -14,6 +14,9 @@ from doubleratchet.recommended import aead_aes_hmac, HashFunction
 from test_recommended_kdfs import generate_unique_random_data
 
 def flip_random_bit(data: bytes) -> bytes:
+    if len(data) == 0:
+        return data
+
     modify_byte = random.randrange(len(data))
     modify_bit  = random.randrange(8)
 
