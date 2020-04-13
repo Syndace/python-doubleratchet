@@ -1,9 +1,8 @@
 import random
 from typing import Set
 
-import doubleratchet
-from doubleratchet.recommended import kdf_hkdf
-from doubleratchet.recommended.hash_function import HashFunction
+from doubleratchet import KDFChain
+from doubleratchet.recommended import HashFunction, kdf_hkdf
 
 from test_recommended_kdfs import generate_unique_random_data
 
@@ -34,7 +33,7 @@ def test_kdf_chain() -> None:
                 break
 
         # Create the KDF chain
-        kdf_chain = doubleratchet.kdf_chain.KDFChain.create(KDF, initial_key)
+        kdf_chain = KDFChain.create(KDF, initial_key)
 
         # Perform 100 derivation steps
         for step_counter in range(100):
@@ -53,7 +52,7 @@ def test_kdf_chain() -> None:
 
         # Create another KDF chain with the same parameters
         output_data_set.clear()
-        kdf_chain = doubleratchet.kdf_chain.KDFChain.create(KDF, initial_key)
+        kdf_chain = KDFChain.create(KDF, initial_key)
 
         # Repeat the 100 derivation steps
         for step_counter in range(100):
@@ -72,7 +71,7 @@ def test_kdf_chain() -> None:
 
         # Create another KDF chain with the same parameters
         output_data_set.clear()
-        kdf_chain = doubleratchet.kdf_chain.KDFChain.create(KDF, initial_key)
+        kdf_chain = KDFChain.create(KDF, initial_key)
 
         # Repeat only the first 50 derivation steps
         for step_counter in range(50):
@@ -87,7 +86,7 @@ def test_kdf_chain() -> None:
             assert kdf_chain.length == step_counter + 1
 
         # Serialize and deserialize the KDF chain
-        kdf_chain = doubleratchet.kdf_chain.KDFChain.deserialize(kdf_chain.serialize(), KDF)
+        kdf_chain = KDFChain.deserialize(kdf_chain.serialize(), KDF)
 
         # Perform the remaining 50 derivation steps
         for step_counter in range(50):

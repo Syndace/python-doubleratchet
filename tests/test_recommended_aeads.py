@@ -8,9 +8,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from doubleratchet.aead import AuthenticationFailedException, DecryptionFailedException
-from doubleratchet.recommended import aead_aes_hmac
-from doubleratchet.recommended.hash_function import HashFunction
+from doubleratchet import AuthenticationFailedException, DecryptionFailedException
+from doubleratchet.recommended import aead_aes_hmac, HashFunction
 
 from test_recommended_kdfs import generate_unique_random_data
 

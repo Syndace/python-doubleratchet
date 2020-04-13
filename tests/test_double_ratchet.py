@@ -7,17 +7,21 @@ import json
 import os
 from typing import Set, Dict, Any, List, Tuple
 
-from doubleratchet.aead import AuthenticationFailedException
-from doubleratchet.diffie_hellman_ratchet import DuplicateMessageException, InconsistentSerializationException
-from doubleratchet.double_ratchet import DoubleRatchet as DR
+from doubleratchet import (
+    AuthenticationFailedException,
+    DoubleRatchet as DR,
+    DuplicateMessageException,
+    EncryptedMessage,
+    Header,
+    InconsistentSerializationException
+)
 from doubleratchet.recommended import (
     aead_aes_hmac,
     diffie_hellman_ratchet_curve25519 as dhr25519,
     diffie_hellman_ratchet_curve448 as dhr448,
+    HashFunction,
     kdf_hkdf
 )
-from doubleratchet.recommended.hash_function import HashFunction
-from doubleratchet.types import Header, EncryptedMessage
 
 from test_recommended_kdfs import generate_unique_random_data
 

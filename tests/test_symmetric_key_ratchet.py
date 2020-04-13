@@ -2,13 +2,12 @@
 
 from typing import Set
 
-from doubleratchet.recommended import kdf_hkdf
-from doubleratchet.recommended.hash_function import HashFunction
-from doubleratchet.symmetric_key_ratchet import (
-    ChainNotAvailableException,
+from doubleratchet import (
     Chain,
+    ChainNotAvailableException,
     SymmetricKeyRatchet
 )
+from doubleratchet.recommended import HashFunction, kdf_hkdf
 
 from test_recommended_kdfs import generate_unique_random_data
 

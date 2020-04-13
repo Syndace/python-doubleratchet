@@ -3,8 +3,6 @@
 from .version import __version__ as __version__
 from .project import   project   as   project
 
-from . import recommended
-
 from .aead import (
     AuthenticationFailedException as AuthenticationFailedException,
     DecryptionFailedException as DecryptionFailedException,

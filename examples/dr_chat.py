@@ -7,24 +7,23 @@ import time
 import traceback
 from typing import Dict, List, Tuple, Any, Optional
 
-from doubleratchet import double_ratchet
+from doubleratchet import DoubleRatchet as DR, EncryptedMessage, Header
 from doubleratchet.recommended import (
     aead_aes_hmac,
-    diffie_hellman_ratchet_curve448,
+    diffie_hellman_ratchet_curve448 as dhr448,
+    HashFunction,
     kdf_hkdf,
     kdf_separate_hmacs
 )
-from doubleratchet.recommended.hash_function import HashFunction
-from doubleratchet.types import EncryptedMessage, Header
 
-class DoubleRatchet(double_ratchet.DoubleRatchet):
+class DoubleRatchet(DR):
     @staticmethod
     def _build_associated_data(associated_data: bytes, header: Header) -> bytes:
         return (
             associated_data + header.ratchet_pub + header.n.to_bytes(8, "big") + header.pn.to_bytes(8, "big")
         )
 
-class DiffieHellmanRatchet(diffie_hellman_ratchet_curve448.DiffieHellmanRatchet):
+class DiffieHellmanRatchet(dhr448.DiffieHellmanRatchet):
     pass
 
 class AEAD(aead_aes_hmac.AEAD):

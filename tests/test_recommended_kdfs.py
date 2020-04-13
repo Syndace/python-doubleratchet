@@ -2,8 +2,7 @@ import os
 import random
 from typing import Set
 
-from doubleratchet.recommended import kdf_hkdf, kdf_separate_hmacs
-from doubleratchet.recommended.hash_function import HashFunction
+from doubleratchet.recommended import HashFunction, kdf_hkdf, kdf_separate_hmacs
 
 def generate_unique_random_data(lower_bound: int, upper_bound: int, data_set: Set[bytes]) -> bytes:
     while True:

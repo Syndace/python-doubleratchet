@@ -4,18 +4,18 @@
 from typing import cast, Set
 import warnings
 
-from doubleratchet.diffie_hellman_ratchet import (
+from doubleratchet import (
     DoSProtectionException,
     DuplicateMessageException,
-    InconsistentSerializationException
+    InconsistentSerializationException,
+    SymmetricKeyRatchetSerialized as SKRSerialized
 )
 from doubleratchet.recommended import (
-    kdf_hkdf,
     diffie_hellman_ratchet_curve25519 as dhr25519,
-    diffie_hellman_ratchet_curve448 as dhr448
+    diffie_hellman_ratchet_curve448 as dhr448,
+    HashFunction,
+    kdf_hkdf
 )
-from doubleratchet.recommended.hash_function import HashFunction
-from doubleratchet.symmetric_key_ratchet import SymmetricKeyRatchetSerialized as SKRSerialized
 
 from test_recommended_kdfs import generate_unique_random_data
 
