@@ -93,7 +93,7 @@ class KDFChain:
             length: The desired size of the output data, in bytes.
 
         Returns:
-            `length` bytes of output data, derived from the internal KDF key and the input data.
+            ``length`` bytes of output data, derived from the internal KDF key and the input data.
         """
 
         key_length = len(self.__key)

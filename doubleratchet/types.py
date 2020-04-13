@@ -17,7 +17,7 @@ class TypeAssertionException(TypeError):
 
 def assert_in(obj: Dict[Any, Any], key: str) -> Any:
     """
-    Asserts that `obj` contains an element `key` and returns the corresponding element.
+    Asserts that ``obj`` contains an element ``key`` and returns the corresponding element.
 
     Raises:
         TypeAssertionException: if the object does not contain the expected key.
@@ -31,9 +31,10 @@ def assert_in(obj: Dict[Any, Any], key: str) -> Any:
 def assert_type(expected_type: Type[A], obj: Any, key: Optional[str] = None) -> A:
     """
     Args:
-        expected_type: The excpected type of `obj`.
+        expected_type: The excpected type of ``obj``.
         obj: The object to type check.
-        key: If given, the object is treated as a dictionary and `obj[key]` is type checked instead of `obj`.
+        key: If given, the object is treated as a dictionary and ``obj[key]`` is type checked instead of
+            ``obj``.
 
     Returns:
         The type checked and correctly typed object.
@@ -57,9 +58,10 @@ def assert_type(expected_type: Type[A], obj: Any, key: Optional[str] = None) -> 
 def assert_type_optional(expected_type: Type[A], obj: Any, key: Optional[str] = None) -> Optional[A]:
     """
     Args:
-        expected_type: The excpected type of `obj`, if `obj` is not None.
+        expected_type: The excpected type of ``obj``, if ``obj`` is not None.
         obj: The object to type check.
-        key: If given, the object is treated as a dictionary and `obj[key]` is type checked instead of `obj`.
+        key: If given, the object is treated as a dictionary and ``obj[key]`` is type checked instead of
+            ``obj``.
 
     Returns:
         The type checked and correctly typed object.
@@ -78,7 +80,7 @@ def assert_type_optional(expected_type: Type[A], obj: Any, key: Optional[str] = 
 
 def assert_decode_json(expected_type: Type[A], json_encoded: str) -> A:
     """
-    Asserts that `json_encoded` contains valid JSON, deserializes the JSON and checks that the resulting
+    Asserts that ``json_encoded`` contains valid JSON, deserializes the JSON and checks that the resulting
     object has the expected type.
 
     Raises:
@@ -95,8 +97,8 @@ def assert_decode_json(expected_type: Type[A], json_encoded: str) -> A:
 
 def assert_decode_base64(base64_encoded: str) -> bytes:
     """
-    Asserts that `base64_encoded` is ASCII-encodable and contains valid base64 encoded data, deserializes and
-    returns it.
+    Asserts that ``base64_encoded`` is ASCII-encodable and contains valid base64 encoded data, deserializes
+    and returns it.
 
     Raises:
         TypeAssertionException: if the string is not ASCII-encodable or does not contain valid base64 encoded

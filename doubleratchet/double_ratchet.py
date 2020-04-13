@@ -305,7 +305,7 @@ class DoubleRatchet(metaclass=ABCMeta):
         Note:
             The pre-stable serialization format left it up to the user to implement serialization of key
             pairs. The migration code assumes the format used by pre-stable
-            `python-omemo <https://github.com/Syndace/python-omemo>`_ and will raise an exception if a
+            `python-omemo <https://github.com/Syndace/python-omemo>`__ and will raise an exception if a
             different format was used. In that case, the custom format has to be migrated first by the user.
         """
 

@@ -20,7 +20,7 @@ class KDF(metaclass=ABCMeta):
             length: The desired size of the output data, in bytes.
 
         Returns:
-            `length` bytes of output data, derived from the KDF key and the input data.
+            ``length`` bytes of output data, derived from the KDF key and the input data.
         """
 
         raise NotImplementedError("Create a subclass of KDF and implement `derive`.")
