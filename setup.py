@@ -30,6 +30,8 @@ classifiers = [
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy"
@@ -55,7 +57,7 @@ setup(
     long_description_content_type = "text/markdown",
     license = "MIT",
     packages = find_packages(),
-    install_requires = [ "cryptography>=2.6.1,<3", "packaging>=19,<21" ],
+    install_requires = [ "cryptography>=3.3.2,<37", "packaging>=20.9,<22" ],
     python_requires = ">=3.6,<4",
     include_package_data = True,
     zip_safe = False,

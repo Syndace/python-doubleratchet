@@ -1,2 +1,2 @@
-cryptography>=2.6.1,<3
-packaging>=19,<21
+cryptography>=3.3.2,<37
+packaging>=20.9,<22
