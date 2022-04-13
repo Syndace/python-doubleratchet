@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # pylint: disable=unused-variable
 
 from typing import Dict, List, Optional, cast
 

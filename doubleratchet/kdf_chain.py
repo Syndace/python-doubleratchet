@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # pylint: disable=unused-variable
 
 from base64 import b64encode, b64decode
 import json

@@ -171,6 +171,10 @@ def test_double_ratchet() -> None:
             **drc
         )
 
+        assert alice_dr.sending_chain_length == 1
+        assert alice_dr.receiving_chain_length is None
+        assert bob_dr.sending_chain_length == 0
+        assert bob_dr.receiving_chain_length == 1
         assert plaintext == message
 
         # Send a message back and forth

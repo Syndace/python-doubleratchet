@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # pylint: disable=unused-variable
 
 from abc import ABC, abstractmethod
 from base64 import b64encode, b64decode
@@ -113,6 +113,26 @@ class DiffieHellmanRatchet(ABC):
             self.__replace_chain(Chain.SENDING)
 
         return self
+
+    @property
+    def sending_chain_length(self) -> int:
+        """
+        Returns:
+            The length of the sending chain of the internal symmetric-key ratchet.
+        """
+
+        # Sanity check; the sending chain must exist
+        assert self.__symmetric_key_ratchet.sending_chain_length is not None
+        return self.__symmetric_key_ratchet.sending_chain_length
+
+    @property
+    def receiving_chain_length(self) -> Optional[int]:
+        """
+        Returns:
+            The length of the receiving chain of the internal symmetric-key ratchet, if it exists.
+        """
+
+        return self.__symmetric_key_ratchet.receiving_chain_length
 
     ####################
     # abstract methods #
