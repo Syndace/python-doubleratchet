@@ -1,5 +1,3 @@
-# pylint: disable=too-many-statements
-
 from typing import Set
 
 from doubleratchet import (
@@ -9,9 +7,19 @@ from doubleratchet import (
 )
 from doubleratchet.recommended import HashFunction, kdf_hkdf
 
-from test_recommended_kdfs import generate_unique_random_data
+from .test_recommended_kdfs import generate_unique_random_data
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "test_symmetric_key_ratchet"
+]
+
 
 class KDF(kdf_hkdf.KDF):
+    """
+    The KDF to use for testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -20,7 +28,12 @@ class KDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_symmetric_key_ratchet info".encode("ASCII")
 
+
 def test_symmetric_key_ratchet() -> None:
+    """
+    Test the symmetric-key ratchet implementation.
+    """
+
     constant_set: Set[bytes] = set()
     key_set: Set[bytes] = set()
 
@@ -38,8 +51,8 @@ def test_symmetric_key_ratchet() -> None:
         assert skr_b.receiving_chain_length is None
 
         key = generate_unique_random_data(32, 32 + 1, key_set)
-        skr_a.replace_chain(Chain.Sending, key)
-        skr_b.replace_chain(Chain.Receiving, key)
+        skr_a.replace_chain(Chain.SENDING, key)
+        skr_b.replace_chain(Chain.RECEIVING, key)
 
         assert skr_a.previous_sending_chain_length is None
         assert skr_b.previous_sending_chain_length is None
@@ -64,16 +77,16 @@ def test_symmetric_key_ratchet() -> None:
 
         assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
 
-        assert skr_a.sending_chain_length   == 1
+        assert skr_a.sending_chain_length == 1
         assert skr_b.receiving_chain_length == 1
 
         key = generate_unique_random_data(32, 32 + 1, key_set)
-        skr_a.replace_chain(Chain.Sending, key)
-        skr_b.replace_chain(Chain.Receiving, key)
+        skr_a.replace_chain(Chain.SENDING, key)
+        skr_b.replace_chain(Chain.RECEIVING, key)
 
         key = generate_unique_random_data(32, 32 + 1, key_set)
-        skr_a.replace_chain(Chain.Receiving, key)
-        skr_b.replace_chain(Chain.Sending, key)
+        skr_a.replace_chain(Chain.RECEIVING, key)
+        skr_b.replace_chain(Chain.SENDING, key)
 
         assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
         assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
@@ -91,7 +104,7 @@ def test_symmetric_key_ratchet() -> None:
         skr_b.next_decryption_key()
 
         try:
-            skr_a.replace_chain(Chain.Sending, b"\x00" * 64)
+            skr_a.replace_chain(Chain.SENDING, b"\x00" * 64)
             assert False
         except ValueError as e:
             assert "chain key" in str(e)

@@ -6,6 +6,12 @@ from cryptography.hazmat.primitives import hmac
 from .hash_function import HashFunction
 from .. import kdf
 
+
+__all__ = [  # pylint: disable=unused-variable
+    "KDF"
+]
+
+
 class KDF(kdf.KDF):
     """
     This implementation uses HMAC with SHA-256 or SHA-512 to derive multiple outputs from a single KDF key.

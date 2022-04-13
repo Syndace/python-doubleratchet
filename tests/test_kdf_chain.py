@@ -4,9 +4,19 @@ from typing import Set
 from doubleratchet import KDFChain
 from doubleratchet.recommended import HashFunction, kdf_hkdf
 
-from test_recommended_kdfs import generate_unique_random_data
+from .test_recommended_kdfs import generate_unique_random_data
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "test_kdf_chain"
+]
+
 
 class KDF(kdf_hkdf.KDF):
+    """
+    The KDF to use for testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -15,16 +25,21 @@ class KDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_kdf_chain info".encode("ASCII")
 
+
 def test_kdf_chain() -> None:
+    """
+    Test the KDF chain implementation.
+    """
+
     initial_key_set: Set[bytes] = set()
-    input_data_set:  Set[bytes] = set()
+    input_data_set: Set[bytes] = set()
     output_data_set: Set[bytes] = set()
 
     for _ in range(25):
         # Generate random parameters
         while True:
             initial_key = generate_unique_random_data(0, 2 ** 16, initial_key_set)
-            input_data  = generate_unique_random_data(0, 2 ** 16, input_data_set)
+            input_data = generate_unique_random_data(0, 2 ** 16, input_data_set)
 
             output_data_length = random.randrange(2, 2 ** 16)
 
@@ -86,7 +101,7 @@ def test_kdf_chain() -> None:
             assert kdf_chain.length == step_counter + 1
 
         # Serialize and deserialize the KDF chain
-        kdf_chain = KDFChain.deserialize(kdf_chain.serialize(), KDF)
+        kdf_chain = KDFChain.from_json(kdf_chain.json, KDF)
 
         # Perform the remaining 50 derivation steps
         for step_counter in range(50):

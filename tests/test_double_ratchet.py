@@ -1,12 +1,11 @@
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-statements
-
 import base64
 import copy
 import json
 import os
 from typing import Set, Dict, Any, List, Tuple
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from doubleratchet import (
     AuthenticationFailedException,
     DoubleRatchet as DR,
@@ -23,9 +22,20 @@ from doubleratchet.recommended import (
     kdf_hkdf
 )
 
-from test_recommended_kdfs import generate_unique_random_data
+from .test_recommended_kdfs import generate_unique_random_data
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "test_double_ratchet",
+    "test_migrations"
+]
+
 
 class RootChainKDF(kdf_hkdf.KDF):
+    """
+    The root chain KDF to use while testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_256
@@ -34,7 +44,12 @@ class RootChainKDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_double_ratchet Root Chain KDF info".encode("ASCII")
 
+
 class MessageChainKDF(kdf_hkdf.KDF):
+    """
+    The message chain KDF to use while testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512_256
@@ -43,7 +58,12 @@ class MessageChainKDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_double_ratchet Message Chain KDF info".encode("ASCII")
 
+
 class AEAD(aead_aes_hmac.AEAD):
+    """
+    The AEAD to use while testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -52,12 +72,21 @@ class AEAD(aead_aes_hmac.AEAD):
     def _get_info() -> bytes:
         return "test_double_ratchet AEAD info".encode("ASCII")
 
+
 class DoubleRatchet(DR):
+    """
+    The Double Ratchet to use while testing.
+    """
+
     @staticmethod
     def _build_associated_data(associated_data: bytes, header: Header) -> bytes:
         return (
-            associated_data + header.ratchet_pub + header.n.to_bytes(8, "big") + header.pn.to_bytes(8, "big")
+            associated_data
+            + header.ratchet_pub
+            + header.sending_chain_length.to_bytes(8, "big")
+            + header.previous_sending_chain_length.to_bytes(8, "big")
         )
+
 
 drc: Dict[str, Any] = {
     "diffie_hellman_ratchet_class": dhr448.DiffieHellmanRatchet,
@@ -69,22 +98,32 @@ drc: Dict[str, Any] = {
     "aead": AEAD
 }
 
+
 def test_double_ratchet() -> None:
+    """
+    Test the Double Ratchet implementation.
+    """
+
     shared_secret_set: Set[bytes] = set()
-    message_set:       Set[bytes] = set()
-    ad_set:            Set[bytes] = set()
+    message_set: Set[bytes] = set()
+    ad_set: Set[bytes] = set()
+
+    # for _ in range(200):
     for _ in range(10):
-    #for _ in range(200):
-        bob_key_pair  = dhr448.DiffieHellmanRatchet._generate_key_pair() # pylint: disable=protected-access
+        bob_ratchet_priv = X448PrivateKey.generate()
+        bob_ratchet_pub = bob_ratchet_priv.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw
+        )
         shared_secret = generate_unique_random_data(32, 32 + 1, shared_secret_set)
-        message       = generate_unique_random_data(0, 2 ** 16, message_set)
-        ad            = generate_unique_random_data(0, 2 ** 16, ad_set)
+        message = generate_unique_random_data(0, 2 ** 16, message_set)
+        ad = generate_unique_random_data(0, 2 ** 16, ad_set)  # pylint: disable=invalid-name
 
         # Test that passing a shared secret which doesn't consist of 32 bytes raises an exception:
         try:
             DoubleRatchet.encrypt_initial_message(
                 shared_secret=b"\x00" * 64,
-                recipient_ratchet_pub=bob_key_pair.pub,
+                recipient_ratchet_pub=bob_ratchet_pub,
                 message=message,
                 associated_data=ad,
                 **drc
@@ -101,7 +140,7 @@ def test_double_ratchet() -> None:
             drc_copy["dos_protection_threshold"] = 20
             DoubleRatchet.encrypt_initial_message(
                 shared_secret=shared_secret,
-                recipient_ratchet_pub=bob_key_pair.pub,
+                recipient_ratchet_pub=bob_ratchet_pub,
                 message=message,
                 associated_data=ad,
                 **drc_copy
@@ -115,14 +154,18 @@ def test_double_ratchet() -> None:
         # Encrypt an initial message from Alice to Bob
         alice_dr, encrypted_message = DoubleRatchet.encrypt_initial_message(
             shared_secret=shared_secret,
-            recipient_ratchet_pub=bob_key_pair.pub,
+            recipient_ratchet_pub=bob_ratchet_pub,
             message=message,
             associated_data=ad,
             **drc
         )
         bob_dr, plaintext = DoubleRatchet.decrypt_initial_message(
             shared_secret=shared_secret,
-            own_ratchet_key_pair=bob_key_pair,
+            own_ratchet_priv=bob_ratchet_priv.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption()
+            ),
             message=encrypted_message,
             associated_data=ad,
             **drc
@@ -163,21 +206,21 @@ def test_double_ratchet() -> None:
         assert bob_dr.decrypt_message(skipped_message_1, ad) == message
 
         # Test that only the last 15 skipped message keys are kept around:
-        skipped_message = alice_dr.encrypt_message(message, ad) # Skipped messages: 1
+        skipped_message = alice_dr.encrypt_message(message, ad)  # Skipped messages: 1
         for _ in range(7):
-            alice_dr.encrypt_message(message, ad) # Skipped messages: 8
+            alice_dr.encrypt_message(message, ad)  # Skipped messages: 8
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
         for _ in range(7):
-            alice_dr.encrypt_message(message, ad) # Skipped messages: 15
+            alice_dr.encrypt_message(message, ad)  # Skipped messages: 15
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
         assert bob_dr.decrypt_message(skipped_message, ad) == message
 
-        skipped_message = alice_dr.encrypt_message(message, ad) # Skipped messages: 1
+        skipped_message = alice_dr.encrypt_message(message, ad)  # Skipped messages: 1
         for _ in range(7):
-            alice_dr.encrypt_message(message, ad) # Skipped messages: 8
+            alice_dr.encrypt_message(message, ad)  # Skipped messages: 8
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
         for _ in range(8):
-            alice_dr.encrypt_message(message, ad) # Skipped messages: 16
+            alice_dr.encrypt_message(message, ad)  # Skipped messages: 16
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
         try:
             bob_dr.decrypt_message(skipped_message, ad)
@@ -220,65 +263,63 @@ def test_double_ratchet() -> None:
 
         # Test that (de)serialization doesn't damage the instances:
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
-        alice_dr = DoubleRatchet.deserialize(alice_dr.serialize(), **drc)
+        alice_dr = DoubleRatchet.from_json(alice_dr.json, **drc)
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
-        bob_dr = DoubleRatchet.deserialize(bob_dr.serialize(), **drc)
+        bob_dr = DoubleRatchet.from_json(bob_dr.json, **drc)
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
         skipped_message = alice_dr.encrypt_message(message, ad)
         assert bob_dr.decrypt_message(alice_dr.encrypt_message(message, ad), ad) == message
-        bob_dr = DoubleRatchet.deserialize(bob_dr.serialize(), **drc)
+        bob_dr = DoubleRatchet.from_json(bob_dr.json, **drc)
         assert bob_dr.decrypt_message(skipped_message, ad) == message
 
         # Test that (de)serialization can be used to decrypt the same message twice:
         encrypted_message = alice_dr.encrypt_message(message, ad)
-        bob_dr_serialized = bob_dr.serialize()
+        bob_dr_serialized = bob_dr.json
         assert bob_dr.decrypt_message(encrypted_message, ad) == message
-        bob_dr = DoubleRatchet.deserialize(bob_dr_serialized, **drc)
+        bob_dr = DoubleRatchet.from_json(bob_dr_serialized, **drc)
         assert bob_dr.decrypt_message(encrypted_message, ad) == message
+
 
 MIGRATION_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migration_data")
 
+
 def test_migrations() -> None:
-    class MigrationAEAD(AEAD):
-        pass
-
-    class MigrationRootChainKDF(RootChainKDF):
-        pass
-
-    class MigrationMessageChainKDF(MessageChainKDF):
-        @staticmethod
-        def _get_hash_function() -> HashFunction:
-            return HashFunction.SHA_512
-
-    class MigrationDoubleRatchet(DoubleRatchet):
-        pass
+    """
+    Test serialization format migrations.
+    """
 
     double_ratchet_configuration: Dict[str, Any] = {
         "diffie_hellman_ratchet_class": dhr25519.DiffieHellmanRatchet,
-        "root_chain_kdf": MigrationRootChainKDF,
-        "message_chain_kdf": MigrationMessageChainKDF,
+        "root_chain_kdf": RootChainKDF,
+        "message_chain_kdf": MessageChainKDF,
         "message_chain_constant": "test_double_ratchet Message Chain constant".encode("ASCII"),
         "dos_protection_threshold": 10,
         "max_num_skipped_message_keys": 15,
-        "aead": MigrationAEAD
+        "aead": AEAD
     }
 
-    ad = "test_double_ratchet associated data".encode("ASCII")
+    associated_data = "test_double_ratchet associated data".encode("ASCII")
 
-    with open(os.path.join(MIGRATION_DATA_DIR, "dr-alice-pre-stable.json"), "r") as f:
-        alice_dr_serialized = json.load(f)
+    with open(os.path.join(MIGRATION_DATA_DIR, "dr-alice-pre-stable.json"), encoding="utf-8") as file:
+        alice_dr_serialized = json.load(file)
 
-    with open(os.path.join(MIGRATION_DATA_DIR, "dr-bob-pre-stable.json"), "r") as f:
-        bob_dr_serialized = json.load(f)
+    with open(os.path.join(MIGRATION_DATA_DIR, "dr-bob-pre-stable.json"), encoding="utf-8") as file:
+        bob_dr_serialized = json.load(file)
 
-    with open(os.path.join(MIGRATION_DATA_DIR, "uninitialized-dr-pre-stable.json"), "r") as f:
-        uninitialized_dr_serialized = json.load(f)
+    with open(os.path.join(MIGRATION_DATA_DIR, "uninitialized-dr-pre-stable.json"), encoding="utf-8") as file:
+        uninitialized_dr_serialized = json.load(file)
 
-    with open(os.path.join(MIGRATION_DATA_DIR, "alice-skipped-messages-pre-stable.json"), "r") as f:
-        alice_skipped_messages_serialized = json.load(f)
+    with open(
+        os.path.join(MIGRATION_DATA_DIR, "alice-skipped-messages-pre-stable.json"),
+        encoding="utf-8"
+    ) as file:
+        alice_skipped_messages_serialized = json.load(file)
 
-    with open(os.path.join(MIGRATION_DATA_DIR, "bob-skipped-messages-pre-stable.json"), "r") as f:
-        bob_skipped_messages_serialized = json.load(f)
+    with open(
+        os.path.join(MIGRATION_DATA_DIR, "bob-skipped-messages-pre-stable.json"),
+        encoding="utf-8"
+    ) as file:
+        bob_skipped_messages_serialized = json.load(file)
 
     alice_skipped_messages: List[Tuple[EncryptedMessage, bytes]] = []
     for skipped_message, plaintext in alice_skipped_messages_serialized:
@@ -286,8 +327,8 @@ def test_migrations() -> None:
             EncryptedMessage(
                 header=Header(
                     ratchet_pub=base64.b64decode(skipped_message["header"]["ratchet_pub"].encode("ASCII")),
-                    pn=skipped_message["header"]["pn"],
-                    n=skipped_message["header"]["n"]
+                    previous_sending_chain_length=skipped_message["header"]["pn"],
+                    sending_chain_length=skipped_message["header"]["n"]
                 ),
                 ciphertext=base64.b64decode(skipped_message["ciphertext"].encode("ASCII"))
             ),
@@ -300,8 +341,8 @@ def test_migrations() -> None:
             EncryptedMessage(
                 header=Header(
                     ratchet_pub=base64.b64decode(skipped_message["header"]["ratchet_pub"].encode("ASCII")),
-                    pn=skipped_message["header"]["pn"],
-                    n=skipped_message["header"]["n"]
+                    previous_sending_chain_length=skipped_message["header"]["pn"],
+                    sending_chain_length=skipped_message["header"]["n"]
                 ),
                 ciphertext=base64.b64decode(skipped_message["ciphertext"].encode("ASCII"))
             ),
@@ -310,18 +351,18 @@ def test_migrations() -> None:
 
     # Verify that the uninitialized ratchet data can't be migrated
     try:
-        MigrationDoubleRatchet.deserialize(uninitialized_dr_serialized, **double_ratchet_configuration)
+        DoubleRatchet.from_json(uninitialized_dr_serialized, **double_ratchet_configuration)
         assert False
     except InconsistentSerializationException:
         pass
 
     # Migrate the two valid ratchets
-    alice_dr = MigrationDoubleRatchet.deserialize(alice_dr_serialized, **double_ratchet_configuration)
-    bob_dr   = MigrationDoubleRatchet.deserialize(bob_dr_serialized,   **double_ratchet_configuration)
+    alice_dr = DoubleRatchet.from_json(alice_dr_serialized, **double_ratchet_configuration)
+    bob_dr = DoubleRatchet.from_json(bob_dr_serialized, **double_ratchet_configuration)
 
     # Verify that skipped messages can be correctly decrypted using the restored instances
     for encrypted_message, plaintext in alice_skipped_messages:
-        assert bob_dr.decrypt_message(encrypted_message, ad) == plaintext
+        assert bob_dr.decrypt_message(encrypted_message, associated_data) == plaintext
 
     for encrypted_message, plaintext in bob_skipped_messages:
-        assert alice_dr.decrypt_message(encrypted_message, ad) == plaintext
+        assert alice_dr.decrypt_message(encrypted_message, associated_data) == plaintext

@@ -1,12 +1,26 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "AEAD",
+    "AuthenticationFailedException",
+    "DecryptionFailedException"
+]
+
 
 class AuthenticationFailedException(Exception):
-    pass
+    """
+    Raised by :meth:`AEAD.decrypt` in case of authentication failure.
+    """
+
 
 class DecryptionFailedException(Exception):
-    pass
+    """
+    Raised by :meth:`AEAD.decrypt` in case of decryption failure.
+    """
 
-class AEAD(metaclass=ABCMeta):
+
+class AEAD(ABC):
     """
     Authenticated Encryption with Associated Data (AEAD).
     """
@@ -39,9 +53,9 @@ class AEAD(metaclass=ABCMeta):
             The plaintext.
 
         Raises:
-            AuthenticationFailedException: If the message could not be authenticated using the associated
+            AuthenticationFailedException: if the message could not be authenticated using the associated
                 data.
-            DecryptionFailedException: If the decryption failed for a different reason (e.g. invalid padding).
+            DecryptionFailedException: if the decryption failed for a different reason (e.g. invalid padding).
         """
 
         raise NotImplementedError("Create a subclass of AEAD and implement `decrypt`.")

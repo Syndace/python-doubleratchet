@@ -1,5 +1,5 @@
-doubleratchet
-=============
+Package: doubleratchet
+======================
 
 .. toctree::
     Module: aead <aead>
@@ -7,6 +7,8 @@ doubleratchet
     Module: double_ratchet <double_ratchet>
     Module: kdf_chain <kdf_chain>
     Module: kdf <kdf>
+    Module: migrations <migrations>
+    Module: models <models>
     Module: symmetric_key_ratchet <symmetric_key_ratchet>
     Module: types <types>
 

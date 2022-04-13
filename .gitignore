@@ -1,9 +1,7 @@
-.eggs/
-build/
 dist/
 DoubleRatchet.egg-info/
 
-*.pyc
+__pycache__/
 .pytest_cache/
 .mypy_cache/
 

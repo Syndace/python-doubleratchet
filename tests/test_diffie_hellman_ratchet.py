@@ -1,15 +1,11 @@
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-statements
-
-from typing import cast, Set
-import warnings
+from typing import List, Set, Type
+from warnings import catch_warnings
 
 from doubleratchet import (
     DoSProtectionException,
-    DuplicateMessageException,
-    InconsistentSerializationException,
-    SymmetricKeyRatchetSerialized as SKRSerialized
+    DuplicateMessageException
 )
+from doubleratchet.diffie_hellman_ratchet import DiffieHellmanRatchet
 from doubleratchet.recommended import (
     diffie_hellman_ratchet_curve25519 as dhr25519,
     diffie_hellman_ratchet_curve448 as dhr448,
@@ -17,9 +13,19 @@ from doubleratchet.recommended import (
     kdf_hkdf
 )
 
-from test_recommended_kdfs import generate_unique_random_data
+from .test_recommended_kdfs import generate_unique_random_data
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "test_diffie_hellman_ratchet"
+]
+
 
 class RootChainKDF(kdf_hkdf.KDF):
+    """
+    The root chain KDF to use for testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -28,7 +34,12 @@ class RootChainKDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_diffie_hellman_ratchet Root Chain info".encode("ASCII")
 
+
 class MessageChainKDF(kdf_hkdf.KDF):
+    """
+    The message chain KDF to use for testing.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512_256
@@ -37,21 +48,29 @@ class MessageChainKDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "test_diffie_hellman_ratchet Message Chain info".encode("ASCII")
 
+
 def test_diffie_hellman_ratchet() -> None:
-    for impl in [ dhr25519.DiffieHellmanRatchet, dhr448.DiffieHellmanRatchet ]:
+    """
+    Test the Diffie-Hellman ratchet implementation.
+    """
+    # pylint: disable=protected-access
+
+    impls: List[Type[DiffieHellmanRatchet]] = [ dhr25519.DiffieHellmanRatchet, dhr448.DiffieHellmanRatchet ]
+
+    for impl in impls:
         root_chain_key_set: Set[bytes] = set()
         message_chain_constant_set: Set[bytes] = set()
         for _ in range(100):
             # Generate random parameters
             root_chain_key = generate_unique_random_data(32, 32 + 1, root_chain_key_set)
             message_chain_constant = generate_unique_random_data(0, 2 ** 16, message_chain_constant_set)
-            bob_key_pair = impl._generate_key_pair() # pylint: disable=protected-access
-            bob_pub = bob_key_pair.pub
+
+            bob_priv = impl._generate_priv()
 
             # Create instances for Alice and Bob and exchange an initial message
             alice_dhr = impl.create(
                 None,
-                bob_pub,
+                impl._derive_pub(bob_priv),
                 RootChainKDF,
                 root_chain_key,
                 MessageChainKDF,
@@ -61,7 +80,7 @@ def test_diffie_hellman_ratchet() -> None:
             encryption_key, header = alice_dhr.next_encryption_key()
 
             bob_dhr = impl.create(
-                bob_key_pair,
+                bob_priv,
                 header.ratchet_pub,
                 RootChainKDF,
                 root_chain_key,
@@ -70,8 +89,8 @@ def test_diffie_hellman_ratchet() -> None:
                 10
             )
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
-            assert header.pn == 0
-            assert header.n  == 0
+            assert header.previous_sending_chain_length == 0
+            assert header.sending_chain_length == 0
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -80,19 +99,19 @@ def test_diffie_hellman_ratchet() -> None:
             # Test that Bob can send to Alice now
             encryption_key, header = bob_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
-            assert header.pn == 0
-            assert header.n  == 0
+            assert header.previous_sending_chain_length == 0
+            assert header.sending_chain_length == 0
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
-            assert header.ratchet_pub != bob_pub
+            assert header.ratchet_pub != impl._derive_pub(bob_priv)
             bob_pub = header.ratchet_pub
 
             # Test that n increases in the header and the ratchet pub stays the same
             encryption_key, header = bob_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
-            assert header.pn == 0
-            assert header.n  == 1
+            assert header.previous_sending_chain_length == 0
+            assert header.sending_chain_length == 1
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -102,8 +121,8 @@ def test_diffie_hellman_ratchet() -> None:
             # Test that switching sender/receiver triggers a Diffie-Hellman ratchet step
             encryption_key, header = alice_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
-            assert header.pn == 1
-            assert header.n  == 0
+            assert header.previous_sending_chain_length == 1
+            assert header.sending_chain_length == 0
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -113,8 +132,8 @@ def test_diffie_hellman_ratchet() -> None:
             # Test that pn is set correctly in the header
             encryption_key, header = bob_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
-            assert header.pn == 2
-            assert header.n  == 0
+            assert header.previous_sending_chain_length == 2
+            assert header.sending_chain_length == 0
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -127,8 +146,8 @@ def test_diffie_hellman_ratchet() -> None:
             skipped_encryption_key_3, skipped_header_3 = bob_dhr.next_encryption_key()
             encryption_key, header = bob_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
-            assert header.pn == 2
-            assert header.n  == 4
+            assert header.previous_sending_chain_length == 2
+            assert header.sending_chain_length == 4
             assert len(skipped_message_keys) == 3
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -139,12 +158,12 @@ def test_diffie_hellman_ratchet() -> None:
             assert skipped_header_1.ratchet_pub == bob_pub
             assert skipped_header_2.ratchet_pub == bob_pub
             assert skipped_header_3.ratchet_pub == bob_pub
-            assert skipped_header_1.pn == 2
-            assert skipped_header_2.pn == 2
-            assert skipped_header_3.pn == 2
-            assert skipped_header_1.n == 1
-            assert skipped_header_2.n == 2
-            assert skipped_header_3.n == 3
+            assert skipped_header_1.previous_sending_chain_length == 2
+            assert skipped_header_2.previous_sending_chain_length == 2
+            assert skipped_header_3.previous_sending_chain_length == 2
+            assert skipped_header_1.sending_chain_length == 1
+            assert skipped_header_2.sending_chain_length == 2
+            assert skipped_header_3.sending_chain_length == 3
             assert skipped_message_keys[(bob_pub, 1)] == skipped_encryption_key_1
             assert skipped_message_keys[(bob_pub, 2)] == skipped_encryption_key_2
             assert skipped_message_keys[(bob_pub, 3)] == skipped_encryption_key_3
@@ -163,17 +182,16 @@ def test_diffie_hellman_ratchet() -> None:
                 pass
 
             # Test the more complicated case of skipped message keys (after a Diffie-Hellman ratchet step)
-            skipped_encryption_key, skipped_header = bob_dhr.next_encryption_key() # Prepare a message
-            encryption_key, header = alice_dhr.next_encryption_key() # Perform a Diffie-Hellman ratchet step
+            skipped_encryption_key, skipped_header = bob_dhr.next_encryption_key()  # Prepare a message
+            encryption_key, header = alice_dhr.next_encryption_key()  # Perform a Diffie-Hellman ratchet step
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
-            encryption_key, header = bob_dhr.next_encryption_key() # Let Alice decrypt a "fresh" message
+            encryption_key, header = bob_dhr.next_encryption_key()  # Let Alice decrypt a "fresh" message
             decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
             assert len(skipped_message_keys) == 1
-            assert (
-                skipped_message_keys[(skipped_header.ratchet_pub, skipped_header.n)] == skipped_encryption_key
-            )
+            skipped_message_keys_key = (skipped_header.ratchet_pub, skipped_header.sending_chain_length)
+            assert skipped_message_keys[skipped_message_keys_key] == skipped_encryption_key
 
             # Decrypting this message should not raise an exception but mess up the ratchet instead and return
             # a wrong key:
@@ -184,7 +202,7 @@ def test_diffie_hellman_ratchet() -> None:
             # Double Ratchet mitigates this issue.
             alice_dhr = impl.create(
                 None,
-                bob_key_pair.pub,
+                impl._derive_pub(bob_priv),
                 RootChainKDF,
                 root_chain_key,
                 MessageChainKDF,
@@ -194,7 +212,7 @@ def test_diffie_hellman_ratchet() -> None:
             encryption_key, header = alice_dhr.next_encryption_key()
 
             bob_dhr = impl.create(
-                bob_key_pair,
+                bob_priv,
                 header.ratchet_pub,
                 RootChainKDF,
                 root_chain_key,
@@ -203,8 +221,8 @@ def test_diffie_hellman_ratchet() -> None:
                 10
             )
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
-            assert header.pn == 0
-            assert header.n  == 0
+            assert header.previous_sending_chain_length == 0
+            assert header.sending_chain_length == 0
             assert len(skipped_message_keys) == 0
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
@@ -226,12 +244,12 @@ def test_diffie_hellman_ratchet() -> None:
 
             # Test the (soft) DoS protection:
             encryption_key, header = bob_dhr.next_encryption_key()
-            with warnings.catch_warnings(record=True) as w:
+            with catch_warnings(record=True) as warnings:
                 decryption_key, skipped_message_keys = alice_dhr.next_decryption_key(header)
-                assert len(w) == 1
-                assert issubclass(w[0].category, UserWarning)
-                assert "DoS" in str(w[0].message)
-            assert len(skipped_message_keys) == 0 # Without DoS protection, this would be 25+
+                assert len(warnings) == 1
+                assert issubclass(warnings[0].category, UserWarning)
+                assert "DoS" in str(warnings[0].message)
+            assert len(skipped_message_keys) == 0  # Without DoS protection, this would be 25+
             assert len(encryption_key) == len(decryption_key) == 32
             assert encryption_key == decryption_key
 
@@ -239,7 +257,7 @@ def test_diffie_hellman_ratchet() -> None:
             try:
                 impl.create(
                     None,
-                    bob_key_pair.pub,
+                    impl._derive_pub(bob_priv),
                     RootChainKDF,
                     b"\00" * 64,
                     MessageChainKDF,
@@ -256,32 +274,23 @@ def test_diffie_hellman_ratchet() -> None:
             encryption_key, header = alice_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
             assert encryption_key == decryption_key
-            alice_dhr = impl.deserialize(alice_dhr.serialize(), RootChainKDF, MessageChainKDF,
-                                         message_chain_constant, 10)
+            alice_dhr = impl.from_json(alice_dhr.json, RootChainKDF, MessageChainKDF,
+                                       message_chain_constant, 10)
             encryption_key, header = alice_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
             assert encryption_key == decryption_key
-            bob_dhr = impl.deserialize(bob_dhr.serialize(), RootChainKDF, MessageChainKDF,
-                                       message_chain_constant, 10)
+            bob_dhr = impl.from_json(bob_dhr.json, RootChainKDF, MessageChainKDF,
+                                     message_chain_constant, 10)
             encryption_key, header = alice_dhr.next_encryption_key()
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
             assert encryption_key == decryption_key
 
             # Make sure that a message can be decrypted twice by restoring an old serialized state
             encryption_key, header = alice_dhr.next_encryption_key()
-            bob_dhr_serialized = bob_dhr.serialize()
+            bob_dhr_serialized = bob_dhr.json
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
             assert encryption_key == decryption_key
-            bob_dhr = impl.deserialize(bob_dhr_serialized, RootChainKDF, MessageChainKDF,
-                                       message_chain_constant, 10)
+            bob_dhr = impl.from_json(bob_dhr_serialized, RootChainKDF, MessageChainKDF,
+                                     message_chain_constant, 10)
             decryption_key, skipped_message_keys = bob_dhr.next_decryption_key(header)
             assert encryption_key == decryption_key
-
-            # Make sure that removing the sending chain from the serialized data results in an exception:
-            cast(SKRSerialized, bob_dhr_serialized["symmetric_key_ratchet"])["schain"] = None
-            try:
-                impl.deserialize(bob_dhr_serialized, RootChainKDF, MessageChainKDF,
-                                 message_chain_constant, 10)
-                assert False
-            except InconsistentSerializationException:
-                pass

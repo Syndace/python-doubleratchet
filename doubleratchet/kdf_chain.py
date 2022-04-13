@@ -1,19 +1,23 @@
-from base64 import b64encode
-from typing import TypeVar, Type, Dict, Union
+from __future__ import annotations
+
+from base64 import b64encode, b64decode
+import json
+from typing import Type, TypeVar, cast
 
 from .kdf import KDF
+from .migrations import parse_kdf_chain_model
+from .models import KDFChainModel
+from .types import JSONObject
 
-from .types import (
-    # Assertion Toolkit
-    assert_type,
-    assert_decode_base64,
 
-    # Type Aliases
-    JSONType
-)
+__all__ = [  # pylint: disable=unused-variable
+    "KDFChain"
+]
 
-K = TypeVar("K", bound="KDFChain")
-KDFChainSerialized = Dict[str, Union[int, str]]
+
+KDFChainTypeT = TypeVar("KDFChainTypeT", bound="KDFChain")
+
+
 class KDFChain:
     """
     The term KDF chain is used when some of the output from a KDF is used as an output key and some is used to
@@ -29,60 +33,81 @@ class KDFChain:
         self.__length: int
 
     @classmethod
-    def create(cls: Type[K], kdf: Type[KDF], key: bytes) -> K:
-        # pylint: disable=protected-access
+    def create(cls: Type[KDFChainTypeT], kdf: Type[KDF], key: bytes) -> KDFChainTypeT:
         """
         Args:
             kdf: The KDF to use for the derivation step.
             key: The initial chain key.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.kdf_chain.KDFChain`.
+            A configured instance of :class:`KDFChain`.
         """
 
         self = cls()
-        self.__kdf    = kdf
-        self.__key    = key
+        self.__kdf = kdf
+        self.__key = key
         self.__length = 0
 
         return self
 
-    def serialize(self) -> KDFChainSerialized:
+    @property
+    def model(self) -> KDFChainModel:
         """
         Returns:
-            The internal state of this instance in a JSON-friendly serializable format. Restore the instance
-            using :meth:`deserialize`.
+            The internal state of this :class:`KDFChain` as a pydantic model.
         """
 
-        return {
-            "length" : self.__length,
-            "key"    : b64encode(self.__key).decode("ASCII")
-        }
+        return KDFChainModel(
+            length=self.__length,
+            key_b64=b64encode(self.__key)
+        )
+
+    @property
+    def json(self) -> JSONObject:
+        """
+        Returns:
+            The internal state of this :class:`KDFChain` as a JSON-serializable Python object.
+        """
+
+        return cast(JSONObject, json.loads(self.model.json()))
 
     @classmethod
-    def deserialize(cls: Type[K], serialized: JSONType, kdf: Type[KDF]) -> K:
-        # pylint: disable=protected-access
+    def from_model(cls: Type[KDFChainTypeT], model: KDFChainModel, kdf: Type[KDF]) -> KDFChainTypeT:
         """
         Args:
-            serialized: A serialized instance of this class, as produced by :meth:`serialize`.
+            model: The pydantic model holding the internal state of a :class:`KDFChain`, as produced by
+                :meth:`model`.
             kdf: The KDF to use for the derivation step.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.kdf_chain.KDFChain` restored from the serialized
-            data.
+            A configured instance of :class:`KDFChain`, with internal state restored from the model.
 
-        Raises:
-            TypeAssertionException: if the serialized data is structured/typed incorrectly.
+        Warning:
+            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
+            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            documentation for details.
         """
 
-        root = assert_type(dict, serialized)
-
         self = cls()
-        self.__kdf    = kdf
-        self.__key    = assert_decode_base64(assert_type(str, root, "key"))
-        self.__length = assert_type(int, root, "length")
+        self.__kdf = kdf
+        self.__key = b64decode(model.key_b64)
+        self.__length = model.length
 
         return self
+
+    @classmethod
+    def from_json(cls: Type[KDFChainTypeT], serialized: JSONObject, kdf: Type[KDF]) -> KDFChainTypeT:
+        """
+        Args:
+            serialized: A JSON-serializable Python object holding the internal state of a :class:`KDFChain`,
+                as produced by :meth:`json`.
+            kdf: The KDF to use for the derivation step.
+
+        Returns:
+            A configured instance of :class:`KDFChain`, with internal state restored from the serialized data.
+        """
+
+        return cls.from_model(parse_kdf_chain_model(serialized), kdf)
 
     def step(self, data: bytes, length: int) -> bytes:
         """
@@ -107,4 +132,9 @@ class KDFChain:
 
     @property
     def length(self) -> int:
+        """
+        Returns:
+            The length of this KDF chain, i.e. the number of steps that have been performed.
+        """
+
         return self.__length

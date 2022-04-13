@@ -5,8 +5,10 @@ import pickle
 import shutil
 import time
 import traceback
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from doubleratchet import DoubleRatchet as DR, EncryptedMessage, Header
 from doubleratchet.recommended import (
     aead_aes_hmac,
@@ -16,17 +18,34 @@ from doubleratchet.recommended import (
     kdf_separate_hmacs
 )
 
+
 class DoubleRatchet(DR):
+    """
+    An example of a Double Ratchet implementation used in the chat.
+    """
+
     @staticmethod
     def _build_associated_data(associated_data: bytes, header: Header) -> bytes:
         return (
-            associated_data + header.ratchet_pub + header.n.to_bytes(8, "big") + header.pn.to_bytes(8, "big")
+            associated_data
+            + header.ratchet_pub
+            + header.sending_chain_length.to_bytes(8, "big")
+            + header.previous_sending_chain_length.to_bytes(8, "big")
         )
 
+
 class DiffieHellmanRatchet(dhr448.DiffieHellmanRatchet):
-    pass
+    """
+    Use the recommended X448-based Diffie-Hellman ratchet implementation in this example.
+    """
+
 
 class AEAD(aead_aes_hmac.AEAD):
+    """
+    Use the recommended AES/HMAC-based AEAD implementation in this example, with SHA-512 and a fitting info
+    string.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -35,7 +54,13 @@ class AEAD(aead_aes_hmac.AEAD):
     def _get_info() -> bytes:
         return "Double Ratchet Chat AEAD".encode("ASCII")
 
+
 class RootChainKDF(kdf_hkdf.KDF):
+    """
+    Use the recommended HKDF-based KDF implementation for the root chain in this example, with SHA-512 and a
+    fitting info string.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512
@@ -44,10 +69,17 @@ class RootChainKDF(kdf_hkdf.KDF):
     def _get_info() -> bytes:
         return "Double Ratchet Chat Root Chain KDF".encode("ASCII")
 
+
 class MessageChainKDF(kdf_separate_hmacs.KDF):
+    """
+    Use the recommended separate HMAC-based KDF implementation for the message chain in this example, with
+    truncated SHA-512.
+    """
+
     @staticmethod
     def _get_hash_function() -> HashFunction:
         return HashFunction.SHA_512_256
+
 
 # Configuration of the DoubleRatchet class, which has to be passed to each constructing method
 # (encrypt_initial_message, decrypt_initial_message, deserialize).
@@ -65,40 +97,71 @@ dr_configuration: Dict[str, Any] = {
 ad = "Alice + Bob".encode("ASCII")
 shared_secret = "**32 bytes of very secret data**".encode("ASCII")
 
+
 def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet]:
-    # Abuse the Curve448 DiffieHellmanRatchet implementation to generate a key pair. In a "real" application,
-    # the key exchange that also yields the shared secret for the session initiation probably manages the
-    # ratchet key pair.
-    bob_ratchet_key_pair = DiffieHellmanRatchet._generate_key_pair() # pylint: disable=protected-access
+    """
+    Create the Double Ratchets for Alice and Bob by encrypting/decrypting an initial message.
+
+    Args:
+        message: The initial message.
+
+    Returns:
+        The Double Ratchets of Alice and Bob.
+    """
+
+    # In a real application, the key exchange that also yields the shared secret for the session initiation
+    # probably manages the ratchet key pair.
+    bob_ratchet_priv = X448PrivateKey.generate()
+    bob_ratchet_pub = bob_ratchet_priv.public_key()
 
     # Create Alice' Double Ratchet by encrypting the initial message for Bob:
     alice_dr, initial_message_encrypted = DoubleRatchet.encrypt_initial_message(
-        shared_secret         = shared_secret,
-        recipient_ratchet_pub = bob_ratchet_key_pair.pub,
-        message               = message,
-        associated_data       = ad,
+        shared_secret=shared_secret,
+        recipient_ratchet_pub=bob_ratchet_pub.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw
+        ),
+        message=message,
+        associated_data=ad,
         **dr_configuration
     )
-    print("Alice> {}".format(message.decode("UTF-8")))
+    print(f"Alice> {message.decode('UTF-8')}")
 
     # Create Bobs' Double Ratchet by decrypting the initial message from Alice:
     bob_dr, initial_message_decrypted = DoubleRatchet.decrypt_initial_message(
-        shared_secret        = shared_secret,
-        own_ratchet_key_pair = bob_ratchet_key_pair,
-        message              = initial_message_encrypted,
-        associated_data      = ad,
+        shared_secret=shared_secret,
+        own_ratchet_priv=bob_ratchet_priv.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption()
+        ),
+        message=initial_message_encrypted,
+        associated_data=ad,
         **dr_configuration
     )
-    print("Bob< {}".format(initial_message_decrypted.decode("UTF-8")))
+    print(f"Bob< {initial_message_decrypted.decode('UTF-8')}")
 
     # Bob should have decrypted the message Alice sent him
     assert message == initial_message_decrypted
 
     return alice_dr, bob_dr
 
+
 Deferred = Dict[str, List[EncryptedMessage]]
+
+
 def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> bool:
-    # pylint: disable=too-many-branches
+    """
+    The loop logic of this chat example.
+
+    Args:
+        alice_dr: The Double Ratchet of Alice.
+        bob_dr: The Double Ratchet of Bob.
+        deferred: The dictionary to hold deferred messages.
+
+    Returns:
+        Whether to quit the chat.
+    """
 
     print("a: Send a message from Alice to Bob")
     print("b: Send a message from Bob to Alice")
@@ -122,7 +185,7 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
 
     if action in [ "a", "b" ]:
         # Ask for the message to send
-        message = input("{}> ".format(sender))
+        message = input(f"{sender}> ")
 
         # Encrypt the message for the receiver
         message_encrypted = sender_dr.encrypt_message(message.encode("UTF-8"), ad)
@@ -136,7 +199,7 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
             # Now the receiver can decrypt the message
             message_decrypted = receiver_dr.decrypt_message(message_encrypted, ad)
 
-            print("{}< {}".format(receiver, message_decrypted.decode("UTF-8")))
+            print(f"{receiver}< {message_decrypted.decode('UTF-8')}")
 
         if send_or_defer == "d":
             deferred[sender].append(message_encrypted)
@@ -156,12 +219,12 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
         num_saved_messages = len(deferred[sender])
 
         if num_saved_messages == 0:
-            print("No messages saved from {} to {}.".format(sender, receiver))
+            print(f"No messages saved from {sender} to {receiver}.")
         else:
             while True:
-                message_index = int(input("{} messages saved. Index of the message to send: ".format(
-                    num_saved_messages
-                )))
+                message_index = int(input(
+                    f"{num_saved_messages} messages saved. Index of the message to send: "
+                ))
 
                 if 0 <= message_index < num_saved_messages:
                     break
@@ -172,16 +235,26 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
             # Now the receiver can decrypt the message
             message_decrypted = receiver_dr.decrypt_message(message_encrypted, ad)
 
-            print("{}< {}".format(receiver, message_decrypted.decode("UTF-8")))
+            print(f"{receiver}< {message_decrypted.decode('UTF-8')}")
 
     return action != "q"
 
+
 def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> None:
+    """
+    The main loop of this chat example.
+
+    Args:
+        alice_dr: The Double Ratchet of Alice.
+        bob_dr: The Double Ratchet of Bob.
+        deferred: The dictionary to hold deferred messages.
+    """
+
     while True:
         try:
             if not loop(alice_dr, bob_dr, deferred):
                 break
-        except BaseException: # pylint: disable=broad-except
+        except BaseException:  # pylint: disable=broad-except
             print("Exception raised while processing:")
             traceback.print_exc()
             time.sleep(0.5)
@@ -189,7 +262,15 @@ def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred
         print("")
         print("")
 
+
 def main() -> None:
+    """
+    The entry point for this chat example. Parses command line args, loads cached data, runs the mainloop and
+    caches data before quitting.
+    """
+    # https://github.com/PyCQA/pylint/issues/3942
+    # pylint: disable=no-member
+
     parser = argparse.ArgumentParser(description="Double Ratchet Chat")
     parser.add_argument("-i", "--ignore-cache", dest="ignore_cache", action="store_true",
                         help="ignore the cache completely, neither loading data from the cache nor storing"
@@ -210,20 +291,20 @@ def main() -> None:
         except FileExistsError:
             pass
 
-    alice_dr : Optional[DoubleRatchet] = None
-    bob_dr   : Optional[DoubleRatchet] = None
-    deferred : Optional[Deferred]      = None
+    alice_dr: Optional[DoubleRatchet] = None
+    bob_dr: Optional[DoubleRatchet] = None
+    deferred: Optional[Deferred] = None
 
     if not args.ignore_cache:
         try:
-            with open(os.path.join(storage_dir, "alice_dr.json"), "r") as f:
-                alice_dr = DoubleRatchet.deserialize(json.load(f), **dr_configuration)
+            with open(os.path.join(storage_dir, "alice_dr.json"), "r", encoding="utf-8") as alice_dr_json:
+                alice_dr = DoubleRatchet.from_json(json.load(alice_dr_json), **dr_configuration)
 
-            with open(os.path.join(storage_dir, "bob_dr.json"), "r") as f:
-                bob_dr = DoubleRatchet.deserialize(json.load(f), **dr_configuration)
+            with open(os.path.join(storage_dir, "bob_dr.json"), "r", encoding="utf-8") as bob_dr_json:
+                bob_dr = DoubleRatchet.from_json(json.load(bob_dr_json), **dr_configuration)
 
-            with open(os.path.join(storage_dir, "deferred.pickle"), "rb") as f_bin:
-                deferred = pickle.load(f_bin)
+            with open(os.path.join(storage_dir, "deferred.pickle"), "rb") as deferred_bin:
+                deferred = pickle.load(deferred_bin)
         except OSError:
             pass
 
@@ -234,14 +315,15 @@ def main() -> None:
     main_loop(alice_dr, bob_dr, deferred)
 
     if not args.ignore_cache:
-        with open(os.path.join(storage_dir, "alice_dr.json"), "w") as f:
-            json.dump(alice_dr.serialize(), f)
+        with open(os.path.join(storage_dir, "alice_dr.json"), "w", encoding="utf-8") as alice_dr_json:
+            json.dump(alice_dr.json, alice_dr_json)
 
-        with open(os.path.join(storage_dir, "bob_dr.json"), "w") as f:
-            json.dump(bob_dr.serialize(), f)
+        with open(os.path.join(storage_dir, "bob_dr.json"), "w", encoding="utf-8") as bob_dr_json:
+            json.dump(bob_dr.json, bob_dr_json)
 
-        with open(os.path.join(storage_dir, "deferred.pickle"), "wb") as f_bin:
-            pickle.dump(deferred, f_bin)
+        with open(os.path.join(storage_dir, "deferred.pickle"), "wb") as deferred_bin:
+            pickle.dump(deferred, deferred_bin)
+
 
 if __name__ == "__main__":
     main()

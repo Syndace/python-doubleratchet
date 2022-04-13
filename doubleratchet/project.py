@@ -1,3 +1,5 @@
+__all__ = [ "project" ]  # pylint: disable=unused-variable
+
 project = {
     "name"         : "DoubleRatchet",
     "description"  : "A Python implementation of the Double Ratchet algorithm.",

@@ -1,54 +1,32 @@
-from abc import ABCMeta, abstractmethod
-from base64 import b64encode
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
 import itertools
-from typing import cast, TypeVar, Type, Optional, Dict, Union, List, Tuple
-
-from packaging.version import parse as parse_version
+import json
+from typing import Optional, Tuple, Type, TypeVar, cast
 
 from .aead import AEAD
-from .diffie_hellman_ratchet import (
-    DiffieHellmanRatchet,
-    DiffieHellmanRatchetSerialized,
-    InconsistentSerializationException
-)
+from .diffie_hellman_ratchet import DiffieHellmanRatchet
 from .kdf import KDF
-from .kdf_chain import KDFChainSerialized
-from .symmetric_key_ratchet import SymmetricKeyRatchetSerialized
-from .types import (
-    # Assertion Toolkit
-    assert_in,
-    assert_type,
-    assert_type_optional,
-    assert_decode_json,
-    assert_decode_base64,
+from .migrations import parse_double_ratchet_model
+from .models import DoubleRatchetModel, SkippedMessageKeyModel
+from .types import EncryptedMessage, Header, JSONObject, SkippedMessageKeys
 
-    # Helpers
-    maybe,
 
-    # Type Aliases
-    JSONType,
-    KeyPairSerialized,
-    SkippedMessageKeys,
+__all__ = [  # pylint: disable=unused-variable
+    "DoubleRatchet"
+]
 
-    # Structures (NamedTuples)
-    Header,
-    EncryptedMessage,
-    KeyPair
-)
 
-from .version import __version__
+DoubleRatchetTypeT = TypeVar("DoubleRatchetTypeT", bound="DoubleRatchet")
 
-D = TypeVar("D", bound="DoubleRatchet")
-DoubleRatchetSerialized = Dict[str, Union[
-    str,
-    DiffieHellmanRatchetSerialized,
-    List[Dict[str, Union[str, int]]]
-]]
-class DoubleRatchet(metaclass=ABCMeta):
+
+class DoubleRatchet(ABC):
     """
-    Combining the symmetric-key and DH ratchets gives the Double Ratchet.
+    Combining the symmetric-key ratchet and the Diffie-Hellman ratchet gives the Double Ratchet.
 
     https://signal.org/docs/specifications/doubleratchet/#double-ratchet
 
@@ -68,7 +46,7 @@ class DoubleRatchet(metaclass=ABCMeta):
 
     @classmethod
     def encrypt_initial_message(
-        cls: Type[D],
+        cls: Type[DoubleRatchetTypeT],
         diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
         root_chain_kdf: Type[KDF],
         message_chain_kdf: Type[KDF],
@@ -80,8 +58,7 @@ class DoubleRatchet(metaclass=ABCMeta):
         recipient_ratchet_pub: bytes,
         message: bytes,
         associated_data: bytes
-    ) -> Tuple[D, EncryptedMessage]:
-        # pylint: disable=protected-access
+    ) -> Tuple[DoubleRatchetTypeT, EncryptedMessage]:
         """
         Args:
             diffie_hellman_ratchet_class: A non-abstract subclass of
@@ -103,8 +80,8 @@ class DoubleRatchet(metaclass=ABCMeta):
             associated_data: Additional data to authenticate without including it in the ciphertext.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.double_ratchet.DoubleRatchet` ready to send and
-            receive messages together with the initial message.
+            A configured instance of :class:`DoubleRatchet` ready to send and receive messages together with
+            the initial message.
         """
 
         if dos_protection_threshold > max_num_skipped_message_keys:
@@ -116,7 +93,6 @@ class DoubleRatchet(metaclass=ABCMeta):
             raise ValueError("The shared secret must consist of 32 bytes.")
 
         self = cls()
-
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
         self.__skipped_message_keys = OrderedDict()
         self.__aead = aead
@@ -131,7 +107,7 @@ class DoubleRatchet(metaclass=ABCMeta):
         )
 
         message_key, header = self.__diffie_hellman_ratchet.next_encryption_key()
-        ciphertext  = self.__aead.encrypt(
+        ciphertext = self.__aead.encrypt(
             message,
             message_key,
             self._build_associated_data(associated_data, header)
@@ -141,7 +117,7 @@ class DoubleRatchet(metaclass=ABCMeta):
 
     @classmethod
     def decrypt_initial_message(
-        cls: Type[D],
+        cls: Type[DoubleRatchetTypeT],
         diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
         root_chain_kdf: Type[KDF],
         message_chain_kdf: Type[KDF],
@@ -150,11 +126,10 @@ class DoubleRatchet(metaclass=ABCMeta):
         max_num_skipped_message_keys: int,
         aead: Type[AEAD],
         shared_secret: bytes,
-        own_ratchet_key_pair: KeyPair,
+        own_ratchet_priv: bytes,
         message: EncryptedMessage,
         associated_data: bytes
-    ) -> Tuple[D, bytes]:
-        # pylint: disable=protected-access
+    ) -> Tuple[DoubleRatchetTypeT, bytes]:
         """
         Args:
             diffie_hellman_ratchet_class: A non-abstract subclass of
@@ -170,19 +145,19 @@ class DoubleRatchet(metaclass=ABCMeta):
                 or out-of-order message comes in later. Older keys are discarded to make space for newer keys.
             aead: The AEAD implementation to use for message en- and decryption.
             shared_secret: A shared secret that was agreed on by means external to this protocol.
-            own_ratchet_key_pair: The ratchet key pair to use initially.
+            own_ratchet_priv: The ratchet private key to use initially.
             message: The encrypted initial message.
             associated_data: Additional data to authenticate without including it in the ciphertext.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.double_ratchet.DoubleRatchet` ready to send and
-            receive messages together with the decrypted initial message.
+            A configured instance of :class:`DoubleRatchet` ready to send and receive messages together with
+            the decrypted initial message.
 
         Raises:
-            AuthenticationFailedException: If the message could not be authenticated using the associated
+            AuthenticationFailedException: if the message could not be authenticated using the associated
                 data.
-            DecryptionFailedException: If the decryption failed for a different reason (e.g. invalid padding).
-            DoSProtectionException: If a huge number of message keys were skipped that have to be calculated
+            DecryptionFailedException: if the decryption failed for a different reason (e.g. invalid padding).
+            DoSProtectionException: if a huge number of message keys were skipped that have to be calculated
                 first before decrypting the message.
         """
 
@@ -195,12 +170,10 @@ class DoubleRatchet(metaclass=ABCMeta):
             raise ValueError("The shared secret must consist of 32 bytes.")
 
         self = cls()
-
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
-        self.__skipped_message_keys = OrderedDict()
         self.__aead = aead
         self.__diffie_hellman_ratchet = diffie_hellman_ratchet_class.create(
-            own_ratchet_key_pair,
+            own_ratchet_priv,
             message.header.ratchet_pub,
             root_chain_kdf,
             shared_secret,
@@ -209,7 +182,11 @@ class DoubleRatchet(metaclass=ABCMeta):
             dos_protection_threshold
         )
 
-        message_key, _ = self.__diffie_hellman_ratchet.next_decryption_key(message.header)
+        message_key, skipped_message_keys = self.__diffie_hellman_ratchet.next_decryption_key(message.header)
+
+        # Even the first message might have skipped message keys. The number of keys can't cross thresholds,
+        # thus no FIFO discarding required.
+        self.__skipped_message_keys = skipped_message_keys
 
         return (self, self.__aead.decrypt(
             message.ciphertext,
@@ -243,27 +220,35 @@ class DoubleRatchet(metaclass=ABCMeta):
     # serialization #
     #################
 
-    def serialize(self) -> DoubleRatchetSerialized:
+    @property
+    def model(self) -> DoubleRatchetModel:
         """
         Returns:
-            The internal state of this instance in a JSON-friendly serializable format. Restore the instance
-            using :meth:`deserialize`.
+            The internal state of this :class:`DoubleRatchet` as a pydantic model.
         """
 
-        return {
-            "diffie_hellman_ratchet" : self.__diffie_hellman_ratchet.serialize(),
-            "skipped_message_keys"   : [ {
-                "ratchet_pub" : b64encode(ratchet_pub).decode("ASCII"),
-                "index"       : index,
-                "message_key" : b64encode(message_key).decode("ASCII")
-            } for (ratchet_pub, index), message_key in self.__skipped_message_keys.items() ],
-            "version": __version__["short"]
-        }
+        return DoubleRatchetModel(
+            diffie_hellman_ratchet=self.__diffie_hellman_ratchet.model,
+            skipped_message_keys=[ SkippedMessageKeyModel(
+                ratchet_pub_b64=b64encode(ratchet_pub),
+                index=index,
+                message_key_b64=b64encode(message_key)
+            ) for (ratchet_pub, index), message_key in self.__skipped_message_keys.items() ]
+        )
+
+    @property
+    def json(self) -> JSONObject:
+        """
+        Returns:
+            The internal state of this :class:`DoubleRatchet` as a JSON-serializable Python object.
+        """
+
+        return cast(JSONObject, json.loads(self.model.json()))
 
     @classmethod
-    def deserialize(
-        cls: Type[D],
-        serialized: JSONType,
+    def from_model(
+        cls: Type[DoubleRatchetTypeT],
+        model: DoubleRatchetModel,
         diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
         root_chain_kdf: Type[KDF],
         message_chain_kdf: Type[KDF],
@@ -271,12 +256,11 @@ class DoubleRatchet(metaclass=ABCMeta):
         dos_protection_threshold: int,
         max_num_skipped_message_keys: int,
         aead: Type[AEAD]
-    ) -> D:
-        # pylint: disable=protected-access
-        # pylint: disable=too-many-locals
+    ) -> DoubleRatchetTypeT:
         """
         Args:
-            serialized: A serialized instance of this class, as produced by :meth:`serialize`.
+            model: The pydantic model holding the internal state of a :class:`DoubleRatchet`, as produced
+                by :meth:`model`.
             diffie_hellman_ratchet_class: A non-abstract subclass of
                 :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
@@ -291,22 +275,19 @@ class DoubleRatchet(metaclass=ABCMeta):
             aead: The AEAD implementation to use for message en- and decryption.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.double_ratchet.DoubleRatchet` restored from the
-            serialized data.
+            A configured instance of :class:`DoubleRatchet`, with internal state restored from the model.
 
         Raises:
-            InconsistentSerializationException: if the serialized data does not contain an initialized sending
-                chain. This can only happen when migrating from pre-stable data a DoubleRatchet that was
-                serialized before sending or receiving a single message. In this case, the serialized
-                DoubleRatchet is basically uninitialized and can be discarded/replaced with a new instance
-                using :meth:`encrypt_initial_message` or :meth:`decrypt_initial_message`.
-            TypeAssertionException: if the serialized data is structured/typed incorrectly.
+            InconsistentSerializationException: if the serialized data is structurally correct, but
+                incomplete. This can only happen when migrating an instance from pre-stable data that was
+                serialized before sending or receiving a single message. In this case, the serialized instance
+                is basically uninitialized and can be discarded/replaced with a new instance using
+                :meth:`encrypt_initial_message` or :meth:`decrypt_initial_message` without losing information.
 
-        Note:
-            The pre-stable serialization format left it up to the user to implement serialization of key
-            pairs. The migration code assumes the format used by pre-stable
-            `python-omemo <https://github.com/Syndace/python-omemo>`__ and will raise an exception if a
-            different format was used. In that case, the custom format has to be migrated first by the user.
+        Warning:
+            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
+            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            documentation for details.
         """
 
         if dos_protection_threshold > max_num_skipped_message_keys:
@@ -314,115 +295,16 @@ class DoubleRatchet(metaclass=ABCMeta):
                 "The `dos_protection_threshold` can't be bigger than `max_num_skipped_message_keys`."
             )
 
-        # All serialization formats use a dictionary as the root element.
-        root = assert_type(dict, serialized)
-
-        # If the version is included, parse it. Otherwise, assume 0.0.0 for the version.
-        version = parse_version("0.0.0")
-        if "version" in root:
-            version = parse_version(assert_type(str, root, "version"))
-
-        # Run migrations
-        version_1_0_0 = parse_version("1.0.0")
-        if version < version_1_0_0:
-            # Migrate pre-stable serialization format
-            root_super = assert_type(dict, root, "super")
-            root_skr   = assert_type(dict, root, "skr")
-            root_smks  = assert_type(dict, root, "smks")
-
-            root_super_root_chain = assert_type(dict, root_super, "root_chain")
-            root_super_own_key    = assert_type(dict, root_super, "own_key")
-            root_super_other_pub  = assert_type(dict, root_super, "other_pub")
-
-            root_skr_schain = assert_type_optional(dict, root_skr, "schain")
-            root_skr_rchain = assert_type_optional(dict, root_skr, "rchain")
-
-            schain: Optional[KDFChainSerialized] = maybe(root_skr_schain, lambda x: cast(KDFChainSerialized, {
-                "length" : assert_type(int, x, "length"),
-                "key"    : assert_type(str, x, "key")
-            }))
-
-            rchain: Optional[KDFChainSerialized] = maybe(root_skr_rchain, lambda x: cast(KDFChainSerialized, {
-                "length" : assert_type(int, x, "length"),
-                "key"    : assert_type(str, x, "key")
-            }))
-
-            ratchet_key_pair: KeyPairSerialized = {
-                "priv" : assert_type(str, root_super_own_key, "priv"),
-                "pub"  : assert_type(str, root_super_own_key, "pub")
-            }
-
-            root_chain: KDFChainSerialized = {
-                "length" : assert_type(int, root_super_root_chain, "length"),
-                "key"    : assert_type(str, root_super_root_chain, "key")
-            }
-
-            symmetric_key_ratchet: SymmetricKeyRatchetSerialized = {
-                "rchain": rchain,
-                "schain": schain,
-                "prev_schain_length": assert_type_optional(int, root_skr, "prev_schain_length")
-            }
-
-            root_super_other_pub_pub = assert_type_optional(str, root_super_other_pub, "pub")
-            if root_super_other_pub_pub is None:
-                raise InconsistentSerializationException(
-                    "The serialized data has no recipient ratchet public key set."
-                )
-
-            diffie_hellman_ratchet_migrated: DiffieHellmanRatchetSerialized = {
-                "ratchet_key_pair"      : ratchet_key_pair,
-                "other_ratchet_pub"     : root_super_other_pub_pub,
-                "root_chain"            : root_chain,
-                "symmetric_key_ratchet" : symmetric_key_ratchet
-            }
-
-            skipped_message_keys_migrated: List[Dict[str, Union[str, int]]] = []
-
-            for key_encoded_untyped in root_smks:
-                key_encoded = assert_type(str, key_encoded_untyped)
-
-                key = assert_decode_json(dict, key_encoded)
-
-                skipped_message_keys_migrated.append({
-                    "ratchet_pub" : assert_type(str, key,  "pub"),
-                    "index"       : assert_type(int, key,  "index"),
-                    "message_key" : assert_type(str, root_smks, key_encoded)
-                })
-
-            double_ratchet_migrated: DoubleRatchetSerialized = {
-                "diffie_hellman_ratchet" : diffie_hellman_ratchet_migrated,
-                "skipped_message_keys"   : skipped_message_keys_migrated,
-                "version": "1.0.0"
-            }
-
-            root = double_ratchet_migrated
-
-            version = version_1_0_0
-
-        # All migrations done, deserialize the data.
-        serialized_diffie_hellman_ratchet = assert_in(root, "diffie_hellman_ratchet")
-        serialized_skipped_message_keys   = assert_type(list, root, "skipped_message_keys")
-
-        skipped_message_keys: SkippedMessageKeys = OrderedDict()
-
-        for serialized_skipped_message_key_untyped in serialized_skipped_message_keys:
-            serialized_skipped_message_key = assert_type(dict, serialized_skipped_message_key_untyped)
-            serialized_ratchet_pub = assert_type(str, serialized_skipped_message_key, "ratchet_pub")
-            serialized_message_key = assert_type(str, serialized_skipped_message_key, "message_key")
-
-            ratchet_pub = assert_decode_base64(serialized_ratchet_pub)
-            index       = assert_type(int, serialized_skipped_message_key, "index")
-            message_key = assert_decode_base64(serialized_message_key)
-
-            skipped_message_keys[(ratchet_pub, index)] = message_key
-
         self = cls()
-
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
-        self.__skipped_message_keys = skipped_message_keys
+        self.__skipped_message_keys = OrderedDict(
+            ((b64decode(smk.ratchet_pub_b64), smk.index), b64decode(smk.message_key_b64))
+            for smk
+            in model.skipped_message_keys
+        )
         self.__aead = aead
-        self.__diffie_hellman_ratchet = diffie_hellman_ratchet_class.deserialize(
-            serialized_diffie_hellman_ratchet,
+        self.__diffie_hellman_ratchet = diffie_hellman_ratchet_class.from_model(
+            model.diffie_hellman_ratchet,
             root_chain_kdf,
             message_chain_kdf,
             message_chain_constant,
@@ -430,6 +312,58 @@ class DoubleRatchet(metaclass=ABCMeta):
         )
 
         return self
+
+    @classmethod
+    def from_json(
+        cls: Type[DoubleRatchetTypeT],
+        serialized: JSONObject,
+        diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
+        root_chain_kdf: Type[KDF],
+        message_chain_kdf: Type[KDF],
+        message_chain_constant: bytes,
+        dos_protection_threshold: int,
+        max_num_skipped_message_keys: int,
+        aead: Type[AEAD]
+    ) -> DoubleRatchetTypeT:
+        """
+        Args:
+            serialized: A JSON-serializable Python object holding the internal state of a
+                :class:`DoubleRatchet`, as produced by :meth:`json`.
+            diffie_hellman_ratchet_class: A non-abstract subclass of
+                :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`.
+            root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
+            message_chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
+                deriving 64 bytes.
+            message_chain_constant: The constant to feed into the sending and receiving KDF chains on each
+                step.
+            dos_protection_threshold: The maximum number of skipped message keys to calculate. If more than
+                that number of message keys are skipped, the keys are not calculated to prevent being DoSed.
+            max_num_skipped_message_keys: The maximum number of skipped message keys to store in case the lost
+                or out-of-order message comes in later. Older keys are discarded to make space for newer keys.
+            aead: The AEAD implementation to use for message en- and decryption.
+
+        Returns:
+            A configured instance of :class:`DoubleRatchet`, with internal state restored from the serialized
+            data.
+
+        Raises:
+            InconsistentSerializationException: if the serialized data is structurally correct, but
+                incomplete. This can only happen when migrating an instance from pre-stable data that was
+                serialized before sending or receiving a single message. In this case, the serialized instance
+                is basically uninitialized and can be discarded/replaced with a new instance using
+                :meth:`encrypt_initial_message` or :meth:`decrypt_initial_message` without losing information.
+        """
+
+        return cls.from_model(
+            parse_double_ratchet_model(serialized),
+            diffie_hellman_ratchet_class,
+            root_chain_kdf,
+            message_chain_kdf,
+            message_chain_constant,
+            dos_protection_threshold,
+            max_num_skipped_message_keys,
+            aead
+        )
 
     #########################
     # message en/decryption #
@@ -446,7 +380,7 @@ class DoubleRatchet(metaclass=ABCMeta):
         """
 
         message_key, header = self.__diffie_hellman_ratchet.next_encryption_key()
-        ciphertext  = self.__aead.encrypt(
+        ciphertext = self.__aead.encrypt(
             message,
             message_key,
             self._build_associated_data(associated_data, header)
@@ -464,52 +398,53 @@ class DoubleRatchet(metaclass=ABCMeta):
             The message plaintext, after decrypting and authenticating the ciphertext.
 
         Raises:
-            AuthenticationFailedException: If the message could not be authenticated using the associated
+            AuthenticationFailedException: if the message could not be authenticated using the associated
                 data.
-            DecryptionFailedException: If the decryption failed for a different reason (e.g. invalid padding).
-            DoSProtectionException: If a huge number of message keys were skipped that have to be calculated
+            DecryptionFailedException: if the decryption failed for a different reason (e.g. invalid padding).
+            DoSProtectionException: if a huge number of message keys were skipped that have to be calculated
                 first before decrypting the message.
-            DuplicateMessageException: If this message appears to be a duplicate.
+            DuplicateMessageException: if this message appears to be a duplicate.
         """
 
-        # If an exception is raised (e.g. message authentication failure) then the message is discarded and
-        # changes to the state object are discarded. Otherwise, the decrypted plaintext is accepted and
-        # changes to the state object are stored.
+        # Be careful to only keep changes to the internal state on decryption success. To do so, work with a
+        # clone of the Diffie-Hellman ratchet, discard the clone on failure or replace the original with the
+        # clone on success.
         # https://signal.org/docs/specifications/doubleratchet/#decrypting-messages
 
-        # Create a clone to perform the decryption
-        # pylint: disable=protected-access
-        clone = copy.deepcopy(self)
+        diffie_hellman_ratchet = copy.deepcopy(self.__diffie_hellman_ratchet)
+        skipped_message_keys: Optional[SkippedMessageKeys] = None
+        skipped_message_key_key = (message.header.ratchet_pub, message.header.sending_chain_length)
 
-        # Try to decrypt the message using the clone
-        plaintext = clone.__decrypt_message(message, associated_data)
+        # Get the message key, either from the skipped message keys or from the Diffie-Hellman ratchet clone
+        message_key: bytes
+        try:
+            message_key = self.__skipped_message_keys[skipped_message_key_key]
+        except KeyError:
+            message_key, skipped_message_keys = diffie_hellman_ratchet.next_decryption_key(message.header)
 
-        # If the decryption didn't raise any exceptions, apply the changes in the state of the clone to self
-        self.__skipped_message_keys   = clone.__skipped_message_keys
-        self.__diffie_hellman_ratchet = clone.__diffie_hellman_ratchet
-
-        return plaintext
-
-    def __decrypt_message(self, message: EncryptedMessage, associated_data: bytes) -> bytes:
-        message_key = self.__get_skipped_message_key(message.header)
-        if message_key is None:
-            message_key, skipped_mks = self.__diffie_hellman_ratchet.next_decryption_key(message.header)
-
-            self.__store_skipped_message_keys(skipped_mks)
-
-        return self.__aead.decrypt(
+        # Decrypt the message (or at least attempt to do so). At this point, the internal state of this
+        # instance remains untouched.
+        plaintext = self.__aead.decrypt(
             message.ciphertext,
             message_key,
             self._build_associated_data(associated_data, message.header)
         )
 
-    def __get_skipped_message_key(self, header: Header) -> Optional[bytes]:
-        return self.__skipped_message_keys.pop((header.ratchet_pub, header.n), None)
+        # Following decryption success, apply relevant changes to the internal state.
 
-    def __store_skipped_message_keys(self, skipped_message_keys: SkippedMessageKeys) -> None:
-        self.__skipped_message_keys.update(skipped_message_keys)
-        self.__skipped_message_keys = OrderedDict(itertools.islice(
-            self.__skipped_message_keys.items(),
-            max(len(self.__skipped_message_keys) - self.__max_num_skipped_message_keys, 0),
-            None
-        ))
+        # In case a skipped message key was used, remove it.
+        self.__skipped_message_keys.pop(skipped_message_key_key, None)
+
+        # Store new skipped message keys and limit their number.
+        if skipped_message_keys is not None:
+            self.__skipped_message_keys.update(skipped_message_keys)
+            self.__skipped_message_keys = OrderedDict(itertools.islice(
+                self.__skipped_message_keys.items(),
+                max(len(self.__skipped_message_keys) - self.__max_num_skipped_message_keys, 0),
+                None
+            ))
+
+        # Store the clone.
+        self.__diffie_hellman_ratchet = diffie_hellman_ratchet
+
+        return plaintext

@@ -3,12 +3,20 @@ from typing import Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, hmac, padding
+from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.base import _CipherContext
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.padding import PKCS7, _PKCS7PaddingContext, _PKCS7UnpaddingContext
 
 from .hash_function import HashFunction
 from .. import aead
+
+
+__all__ = [  # pylint: disable=unused-variable
+    "AEAD"
+]
+
 
 class AEAD(aead.AEAD):
     """
@@ -46,12 +54,16 @@ class AEAD(aead.AEAD):
         encryption_key, authentication_key, iv = cls.__derive(key, hash_function, cls._get_info())
 
         # Prepare PKCS#7 padded plaintext
-        padder = padding.PKCS7(128).padder()
+        padder: _PKCS7PaddingContext = PKCS7(128).padder()  # type: ignore[no-untyped-call]
         padded_plaintext = padder.update(plaintext) + padder.finalize()
 
         # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
         # previously created key and IV
-        aes = Cipher(algorithms.AES(encryption_key), modes.CBC(iv), backend=default_backend()).encryptor()
+        aes: _CipherContext = Cipher(
+            algorithms.AES(encryption_key),
+            modes.CBC(iv),
+            backend=default_backend()
+        ).encryptor()  # type: ignore[no-untyped-call]
         ciphertext = aes.update(padded_plaintext) + aes.finalize()
 
         # Calculate the authentication tag
@@ -69,7 +81,7 @@ class AEAD(aead.AEAD):
         decryption_key, authentication_key, iv = cls.__derive(key, hash_function, cls._get_info())
 
         # Split the authentication tag from the ciphertext
-        auth       = ciphertext[-hash_function.digest_size:]
+        auth = ciphertext[-hash_function.digest_size:]
         ciphertext = ciphertext[:-hash_function.digest_size]
 
         # Calculate and verify the authentication tag
@@ -85,14 +97,18 @@ class AEAD(aead.AEAD):
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
         # previously created key and IV
         try:
-            aes = Cipher(algorithms.AES(decryption_key), modes.CBC(iv), backend=default_backend()).decryptor()
+            aes: _CipherContext = Cipher(
+                algorithms.AES(decryption_key),
+                modes.CBC(iv),
+                backend=default_backend()
+            ).decryptor()  # type: ignore[no-untyped-call]
             padded_plaintext = aes.update(ciphertext) + aes.finalize()
         except ValueError as e:
             raise aead.DecryptionFailedException("Decryption failed.") from e
 
         # Remove the PKCS#7 padding from the plaintext
         try:
-            unpadder  = padding.PKCS7(128).unpadder()
+            unpadder: _PKCS7UnpaddingContext = PKCS7(128).unpadder()  # type: ignore[no-untyped-call]
             plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
         except ValueError as e:
             raise aead.DecryptionFailedException("Plaintext padded incorrectly.") from e
@@ -106,11 +122,11 @@ class AEAD(aead.AEAD):
 
         # Derive 80 bytes
         hkdf_out = HKDF(
-            algorithm = hash_function,
-            length    = 80,
-            salt      = salt,
-            info      = info,
-            backend   = default_backend()
+            algorithm=hash_function,
+            length=80,
+            salt=salt,
+            info=info,
+            backend=default_backend()
         ).derive(key)
 
         # Split these 80 bytes into three parts

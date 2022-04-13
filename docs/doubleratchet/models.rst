@@ -1,7 +1,7 @@
-Module: types
-=============
+Module: models
+==============
 
-.. automodule:: doubleratchet.types
+.. automodule:: doubleratchet.models
     :members:
     :undoc-members:
     :member-order: bysource

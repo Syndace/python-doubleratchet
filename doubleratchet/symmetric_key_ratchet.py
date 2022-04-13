@@ -1,34 +1,43 @@
+from __future__ import annotations
+
 import enum
-from functools import partial
-from typing import TypeVar, Type, Optional, Dict, Union
+import json
+from typing import Optional, Type, TypeVar, cast
 
 from .kdf import KDF
-from .kdf_chain import KDFChain, KDFChainSerialized
+from .kdf_chain import KDFChain
+from .migrations import parse_symmetric_key_ratchet_model
+from .models import SymmetricKeyRatchetModel
+from .types import JSONObject
 
-from .types import (
-    # Assertion Toolkit
-    assert_in,
-    assert_type,
-    assert_type_optional,
 
-    # Helpers
-    maybe,
-    maybe_or,
+__all__ = [  # pylint: disable=unused-variable
+    "Chain",
+    "ChainNotAvailableException",
+    "SymmetricKeyRatchet"
+]
 
-    # Type Aliases
-    JSONType
-)
 
 class ChainNotAvailableException(Exception):
-    pass
+    """
+    Raised by :meth:`SymmetricKeyRatchet.next_encryption_key` and
+    :meth:`SymmetricKeyRatchet.next_decryption_key` in case the required chain has not been initialized yet.
+    """
+
 
 @enum.unique
 class Chain(enum.Enum):
-    Sending   : str = "Sending"
-    Receiving : str = "Receiving"
+    """
+    Enumeration identifying the chain to replace by :meth:`SymmetricKeyRatchet.replace_chain`.
+    """
 
-S = TypeVar("S", bound="SymmetricKeyRatchet")
-SymmetricKeyRatchetSerialized = Dict[str, Union[Optional[KDFChainSerialized], Optional[int]]]
+    SENDING = "SENDING"
+    RECEIVING = "RECEIVING"
+
+
+SymmetricKeyRatchetTypeT = TypeVar("SymmetricKeyRatchetTypeT", bound="SymmetricKeyRatchet")
+
+
 class SymmetricKeyRatchet:
     """
     The sending and receiving chains advance as each message is sent and received. Their output keys are used
@@ -40,21 +49,17 @@ class SymmetricKeyRatchet:
     def __init__(self) -> None:
         # Just the type definitions here
         self.__kdf: Type[KDF]
-
-        self.__schain: Optional[KDFChain]
-        self.__rchain: Optional[KDFChain]
-
         self.__constant: bytes
-
-        self.__prev_schain_length: Optional[int]
+        self.__receiving_chain: Optional[KDFChain]
+        self.__sending_chain: Optional[KDFChain]
+        self.__previous_sending_chain_length: Optional[int]
 
     @classmethod
     def create(
-        cls: Type[S],
+        cls: Type[SymmetricKeyRatchetTypeT],
         chain_kdf: Type[KDF],
         constant: bytes
-    ) -> S:
-        # pylint: disable=protected-access
+    ) -> SymmetricKeyRatchetTypeT:
         """
         Args:
             chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
@@ -62,72 +67,105 @@ class SymmetricKeyRatchet:
             constant: The constant to feed into the sending and receiving KDF chains on each step.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet`.
+            A configured instance of :class:`SymmetricKeyRatchet`.
         """
 
         self = cls()
-
         self.__kdf = chain_kdf
-
-        self.__schain = None
-        self.__rchain = None
-
         self.__constant = constant
-
-        self.__prev_schain_length = None
+        self.__receiving_chain = None
+        self.__sending_chain = None
+        self.__previous_sending_chain_length = None
 
         return self
 
-    def serialize(self) -> SymmetricKeyRatchetSerialized:
+    @property
+    def model(self) -> SymmetricKeyRatchetModel:
         """
         Returns:
-            The internal state of this instance in a JSON-friendly serializable format. Restore the instance
-            using :meth:`deserialize`.
+            The internal state of this :class:`SymmetricKeyRatchet` as a pydantic model.
         """
 
-        return {
-            "schain": maybe(self.__schain, lambda x: x.serialize()),
-            "rchain": maybe(self.__rchain, lambda x: x.serialize()),
-            "prev_schain_length": self.__prev_schain_length
-        }
+        return SymmetricKeyRatchetModel(
+            receiving_chain=None if self.__receiving_chain is None else self.__receiving_chain.model,
+            sending_chain=None if self.__sending_chain is None else self.__sending_chain.model,
+            previous_sending_chain_length=self.__previous_sending_chain_length
+        )
+
+    @property
+    def json(self) -> JSONObject:
+        """
+        Returns:
+            The internal state of this :class:`SymmetricKeyRatchet` as a JSON-serializable Python object.
+        """
+
+        return cast(JSONObject, json.loads(self.model.json()))
 
     @classmethod
-    def deserialize(
-        cls: Type[S],
-        serialized: JSONType,
+    def from_model(
+        cls: Type[SymmetricKeyRatchetTypeT],
+        model: SymmetricKeyRatchetModel,
         chain_kdf: Type[KDF],
         constant: bytes
-    ) -> S:
-        # pylint: disable=protected-access
+    ) -> SymmetricKeyRatchetTypeT:
         """
         Args:
-            serialized: A serialized instance of this class, as produced by :meth:`serialize`.
+            model: The pydantic model holding the internal state of a :class:`SymmetricKeyRatchet`, as
+                produced by :meth:`model`.
             chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
             constant: The constant to feed into the sending and receiving KDF chains on each step.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet`
-            restored from the serialized data.
+            A configured instance of :class:`SymmetricKeyRatchet`, with internal state restored from the
+            model.
 
-        Raises:
-            TypeAssertionException: if the serialized data is structured/typed incorrectly.
+        Warning:
+            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
+            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            documentation for details.
         """
 
-        root = assert_type(dict, serialized)
-
         self = cls()
-
         self.__kdf = chain_kdf
-
-        self.__schain = maybe(assert_in(root, "schain"), partial(KDFChain.deserialize, kdf=chain_kdf))
-        self.__rchain = maybe(assert_in(root, "rchain"), partial(KDFChain.deserialize, kdf=chain_kdf))
-
         self.__constant = constant
-
-        self.__prev_schain_length = assert_type_optional(int, root, "prev_schain_length")
+        self.__receiving_chain = None if model.receiving_chain is None else KDFChain.from_model(
+            model.receiving_chain,
+            chain_kdf
+        )
+        self.__sending_chain = None if model.sending_chain is None else KDFChain.from_model(
+            model.sending_chain,
+            chain_kdf
+        )
+        self.__previous_sending_chain_length = model.previous_sending_chain_length
 
         return self
+
+    @classmethod
+    def from_json(
+        cls: Type[SymmetricKeyRatchetTypeT],
+        serialized: JSONObject,
+        chain_kdf: Type[KDF],
+        constant: bytes
+    ) -> SymmetricKeyRatchetTypeT:
+        """
+        Args:
+            serialized: A JSON-serializable Python object holding the internal state of a
+                :class:`SymmetricKeyRatchet`, as produced by :meth:`json`.
+            chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
+                deriving 64 bytes.
+            constant: The constant to feed into the sending and receiving KDF chains on each step.
+
+        Returns:
+            A configured instance of :class:`SymmetricKeyRatchet`, with internal state restored from the
+            serialized data.
+        """
+
+        return cls.from_model(
+            parse_symmetric_key_ratchet_model(serialized),
+            chain_kdf,
+            constant
+        )
 
     def replace_chain(self, chain: Chain, key: bytes) -> None:
         """
@@ -141,24 +179,39 @@ class SymmetricKeyRatchet:
         if len(key) != 32:
             raise ValueError("The chain key must consist of 32 bytes.")
 
-        if chain is Chain.Sending:
-            self.__prev_schain_length = maybe(self.__schain, lambda x: x.length)
-            self.__schain = KDFChain.create(self.__kdf, key)
+        if chain is Chain.SENDING:
+            self.__previous_sending_chain_length = self.sending_chain_length
+            self.__sending_chain = KDFChain.create(self.__kdf, key)
 
-        if chain is Chain.Receiving:
-            self.__rchain = KDFChain.create(self.__kdf, key)
+        if chain is Chain.RECEIVING:
+            self.__receiving_chain = KDFChain.create(self.__kdf, key)
 
     @property
     def previous_sending_chain_length(self) -> Optional[int]:
-        return self.__prev_schain_length
+        """
+        Returns:
+            The length of the previous sending chain, if it exists.
+        """
+
+        return self.__previous_sending_chain_length
 
     @property
     def sending_chain_length(self) -> Optional[int]:
-        return maybe(self.__schain, lambda x: x.length)
+        """
+        Returns:
+            The length of the sending chain, if it exists.
+        """
+
+        return None if self.__sending_chain is None else self.__sending_chain.length
 
     @property
     def receiving_chain_length(self) -> Optional[int]:
-        return maybe(self.__rchain, lambda x: x.length)
+        """
+        Returns:
+            The length of the receiving chain, if it exists.
+        """
+
+        return None if self.__receiving_chain is None else self.__receiving_chain.length
 
     def next_encryption_key(self) -> bytes:
         """
@@ -169,9 +222,12 @@ class SymmetricKeyRatchet:
             ChainNotAvailableException: if the sending chain was never initialized.
         """
 
-        return maybe_or(self.__schain, lambda x: x.step(self.__constant, 32), ChainNotAvailableException(
-            "The sending chain was never initialized, can not derive the next encryption key."
-        ))
+        if self.__sending_chain is None:
+            raise ChainNotAvailableException(
+                "The sending chain was never initialized, can not derive the next encryption key."
+            )
+
+        return self.__sending_chain.step(self.__constant, 32)
 
     def next_decryption_key(self) -> bytes:
         """
@@ -182,6 +238,9 @@ class SymmetricKeyRatchet:
             ChainNotAvailableException: if the receiving chain was never initialized.
         """
 
-        return maybe_or(self.__rchain, lambda x: x.step(self.__constant, 32), ChainNotAvailableException(
-            "The receiving chain was never initialized, can not derive the next decryption key."
-        ))
+        if self.__receiving_chain is None:
+            raise ChainNotAvailableException(
+                "The receiving chain was never initialized, can not derive the next decryption key."
+            )
+
+        return self.__receiving_chain.step(self.__constant, 32)

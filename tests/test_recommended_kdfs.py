@@ -1,40 +1,101 @@
 import os
 import random
-from typing import Set
+from typing import Set, Type
 
 from doubleratchet.recommended import HashFunction, kdf_hkdf, kdf_separate_hmacs
 
+
+__all__ = [  # pylint: disable=unused-variable
+    "test_kdf_hkdf",
+    "test_kdf_separate_hmacs"
+]
+
+
+def make_kdf_hkdf(hash_function: HashFunction, info: bytes) -> Type[kdf_hkdf.KDF]:
+    """
+    Create a subclass of :class:`~doubleratchet.recommended.kdf_hkdf.KDF` using given hash function and info.
+
+    Args:
+        hash_function: The hash function to use.
+        info: The info to use.
+
+    Returns:
+        The subclass.
+    """
+
+    class KDF(kdf_hkdf.KDF):  # pylint: disable=missing-class-docstring
+        @staticmethod
+        def _get_hash_function() -> HashFunction:
+            return hash_function
+
+        @staticmethod
+        def _get_info() -> bytes:
+            return info
+
+    return KDF
+
+
+def make_kdf_separate_hmacs(hash_function: HashFunction) -> Type[kdf_separate_hmacs.KDF]:
+    """
+    Create a subclass of :class:`~doubleratchet.recommended.kdf_separate_hmacs.KDF` using given hash function.
+
+    Args:
+        hash_function: The hash function to use.
+
+    Returns:
+        The subclass.
+    """
+
+    class KDF(kdf_separate_hmacs.KDF):  # pylint: disable=missing-class-docstring
+        @staticmethod
+        def _get_hash_function() -> HashFunction:
+            return hash_function
+
+    return KDF
+
+
 def generate_unique_random_data(lower_bound: int, upper_bound: int, data_set: Set[bytes]) -> bytes:
+    """
+    Generate random data of random length (within certain bounds) and make sure that the generated data is
+    new.
+
+    Args:
+        lower_bound: The minimum number of bytes.
+        upper_bound: The maximum number of bytes (exclusive).
+        data_set: The set of random data that has been generated before, for uniqueness checks.
+
+    Returns:
+        The newly generated, unique random data.
+    """
+
     while True:
         data = os.urandom(random.randrange(lower_bound, upper_bound))
         if data not in data_set:
             data_set.add(data)
             return data
 
+
 def test_kdf_hkdf() -> None:
+    """
+    Test the HKDF-based recommended KDF implementation.
+    """
+
     for hash_function in HashFunction:
-        key_set:         Set[bytes] = set()
-        input_data_set:  Set[bytes] = set()
+        key_set: Set[bytes] = set()
+        input_data_set: Set[bytes] = set()
         output_data_set: Set[bytes] = set()
-        info_set:        Set[bytes] = set()
+        info_set: Set[bytes] = set()
 
         for _ in range(50):
             # Generate (unique) random parameters
-            key        = generate_unique_random_data(0, 2 ** 16, key_set)
+            key = generate_unique_random_data(0, 2 ** 16, key_set)
             input_data = generate_unique_random_data(0, 2 ** 16, input_data_set)
-            info       = generate_unique_random_data(0, 2 ** 16, info_set)
+            info = generate_unique_random_data(0, 2 ** 16, info_set)
 
             output_data_length = random.randrange(2, 255 * hash_function.as_cryptography.digest_size + 1)
 
             # Prepare the KDF
-            class KDF(kdf_hkdf.KDF):
-                @staticmethod
-                def _get_hash_function() -> HashFunction:
-                    return hash_function # pylint: disable=cell-var-from-loop
-
-                @staticmethod
-                def _get_info() -> bytes:
-                    return info # pylint: disable=cell-var-from-loop
+            KDF = make_kdf_hkdf(hash_function, info)
 
             # Perform a key derivation
             output_data = KDF.derive(key, input_data, output_data_length)
@@ -49,21 +110,23 @@ def test_kdf_hkdf() -> None:
                 output_data_repeated = KDF.derive(key, input_data, output_data_length)
                 assert output_data_repeated == output_data
 
+
 def test_kdf_separate_hmacs() -> None:
+    """
+    Test the separate HMAC-based recommended KDF implementation.
+    """
+
     for hash_function in HashFunction:
-        key_set:         Set[bytes] = set()
-        input_data_set:  Set[bytes] = set()
+        key_set: Set[bytes] = set()
+        input_data_set: Set[bytes] = set()
         output_data_set: Set[bytes] = set()
 
         # Prepare the KDF
-        class KDF(kdf_separate_hmacs.KDF):
-            @staticmethod
-            def _get_hash_function() -> HashFunction:
-                return hash_function # pylint: disable=cell-var-from-loop
+        KDF = make_kdf_separate_hmacs(hash_function)
 
         for _ in range(50):
             # Generate (unique) random parameters
-            key        = generate_unique_random_data(0, 2 ** 16, key_set)
+            key = generate_unique_random_data(0, 2 ** 16, key_set)
             input_data = generate_unique_random_data(1, 2 ** 8, input_data_set)
 
             output_data_length = len(input_data) * hash_function.as_cryptography.digest_size

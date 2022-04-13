@@ -1,6 +1,12 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-class KDF(metaclass=ABCMeta):
+
+__all__ = [  # pylint: disable=unused-variable
+    "KDF"
+]
+
+
+class KDF(ABC):
     """
     A KDF is defined as a cryptographic function that takes a secret and random KDF key and some input data
     and returns output data. The output data is indistinguishable from random provided the key isn't known

@@ -6,6 +6,12 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from .hash_function import HashFunction
 from .. import kdf
 
+
+__all__ = [  # pylint: disable=unused-variable
+    "KDF"
+]
+
+
 class KDF(kdf.KDF):
     """
     This KDF implemention uses HKDF with SHA-256 or SHA-512, using the KDF key as HKDF salt, the KDF data as
@@ -28,9 +34,9 @@ class KDF(kdf.KDF):
     @classmethod
     def derive(cls, key: bytes, data: bytes, length: int) -> bytes:
         return HKDF(
-            algorithm = cls._get_hash_function().as_cryptography,
-            length    = length,
-            salt      = key,
-            info      = cls._get_info(),
-            backend   = default_backend()
+            algorithm=cls._get_hash_function().as_cryptography,
+            length=length,
+            salt=key,
+            info=cls._get_info(),
+            backend=default_backend()
         ).derive(data)

@@ -1,2 +1,2 @@
 cryptography>=3.3.2,<37
-packaging>=20.9,<22
+pydantic>=1.7.4,<2

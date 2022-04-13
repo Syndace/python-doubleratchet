@@ -1,48 +1,45 @@
-from abc import ABCMeta, abstractmethod
-from base64 import b64encode
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from base64 import b64encode, b64decode
 from collections import OrderedDict
-from typing import TypeVar, Type, Dict, Optional, Union, Tuple
+import json
+from typing import Optional, Tuple, Type, TypeVar, cast
 import warnings
 
 from .kdf import KDF
-from .kdf_chain import KDFChain, KDFChainSerialized
-from .symmetric_key_ratchet import SymmetricKeyRatchet, SymmetricKeyRatchetSerialized, Chain
-from .types import (
-    # Assertion Toolkit
-    assert_in,
-    assert_type,
-    assert_decode_base64,
+from .kdf_chain import KDFChain
+from .migrations import InconsistentSerializationException, parse_diffie_hellman_ratchet_model
+from .models import DiffieHellmanRatchetModel
+from .symmetric_key_ratchet import Chain, SymmetricKeyRatchet
+from .types import Header, JSONObject, SkippedMessageKeys
 
-    # Helpers
-    default,
 
-    # Type Aliases
-    JSONType,
-    KeyPairSerialized,
-    SkippedMessageKeys,
+__all__ = [  # pylint: disable=unused-variable
+    "DiffieHellmanRatchet",
+    "DoSProtectionException",
+    "DuplicateMessageException"
+]
 
-    # Structures (NamedTuples)
-    Header,
-    KeyPair
-)
 
 class DoSProtectionException(Exception):
-    pass
+    """
+    Raised by :meth:`DiffieHellmanRatchet.next_decryption_key` in case the number of skipped message keys to
+    calculate crosses the DoS protection threshold.
+    """
+
 
 class DuplicateMessageException(Exception):
-    pass
+    """
+    Raised by :meth:`DiffieHellmanRatchet.next_decryption_key` in case is seems the message was processed
+    before.
+    """
 
-class InconsistentSerializationException(Exception):
-    pass
 
-D = TypeVar("D", bound="DiffieHellmanRatchet")
-DiffieHellmanRatchetSerialized = Dict[str, Union[
-    KeyPairSerialized,
-    str,
-    KDFChainSerialized,
-    SymmetricKeyRatchetSerialized
-]]
-class DiffieHellmanRatchet(metaclass=ABCMeta):
+DiffieHellmanRatchetTypeT = TypeVar("DiffieHellmanRatchetTypeT", bound="DiffieHellmanRatchet")
+
+
+class DiffieHellmanRatchet(ABC):
     """
     As communication partners exchange messages they also exchange new Diffie-Hellman public keys, and the
     Diffie-Hellman output secrets become the inputs to the root chain. The output keys from the root chain
@@ -60,7 +57,7 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
 
     def __init__(self) -> None:
         # Just the type definitions here
-        self.__ratchet_key_pair: KeyPair
+        self.__own_ratchet_priv: bytes
         self.__other_ratchet_pub: bytes
         self.__root_chain: KDFChain
         self.__dos_protection_threshold: int
@@ -68,21 +65,20 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
 
     @classmethod
     def create(
-        cls: Type[D],
-        ratchet_key_pair: Optional[KeyPair],
+        cls: Type[DiffieHellmanRatchetTypeT],
+        own_ratchet_priv: Optional[bytes],
         other_ratchet_pub: bytes,
         root_chain_kdf: Type[KDF],
         root_chain_key: bytes,
         message_chain_kdf: Type[KDF],
         message_chain_constant: bytes,
         dos_protection_threshold: int
-    ) -> D:
-        # pylint: disable=protected-access
+    ) -> DiffieHellmanRatchetTypeT:
         """
         Create and configure a Diffie-Hellman ratchet.
 
         Args:
-            ratchet_key_pair: The ratchet key pair to use initially with this instance.
+            own_ratchet_priv: The ratchet private key to use initially with this instance.
             other_ratchet_pub: The ratchet public key of the other party.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
             root_chain_key: The key to initialize the root chain with, consisting of 32 bytes.
@@ -94,27 +90,27 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
                 that number of message keys are skipped, the keys are not calculated to prevent being DoSed.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`,
-            capable of sending and receiving messages.
+            A configured instance of :class:`DiffieHellmanRatchet`, capable of sending and receiving messages.
         """
 
         if len(root_chain_key) != 32:
             raise ValueError("The initial key for the root chain must consist of 32 bytes.")
 
         self = cls()
-
         self.__root_chain = KDFChain.create(root_chain_kdf, root_chain_key)
         self.__dos_protection_threshold = dos_protection_threshold
         self.__symmetric_key_ratchet = SymmetricKeyRatchet.create(message_chain_kdf, message_chain_constant)
 
-        if ratchet_key_pair is None:
-            self.__ratchet_key_pair  = self._generate_key_pair()
+        if own_ratchet_priv is None:
+            self.__own_ratchet_priv = self._generate_priv()
             self.__other_ratchet_pub = other_ratchet_pub
-            self.__replace_chain(Chain.Sending)
+            self.__replace_chain(Chain.SENDING)
         else:
-            self.__ratchet_key_pair  = ratchet_key_pair
-            self.__other_ratchet_pub = b"" # A little trick to make the update trigger new chains
-            self.__update_diffie_hellman_ratchet(Header(ratchet_pub=other_ratchet_pub, pn=0, n=0))
+            self.__own_ratchet_priv = own_ratchet_priv
+            self.__other_ratchet_pub = other_ratchet_pub
+            self.__replace_chain(Chain.RECEIVING)
+            self.__own_ratchet_priv = self._generate_priv()
+            self.__replace_chain(Chain.SENDING)
 
         return self
 
@@ -124,30 +120,45 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def _generate_key_pair() -> KeyPair:
+    def _generate_priv() -> bytes:
         """
         Returns:
-            A key pair capable of performing Diffie-Hellman key exchanges with the public key of another key
-            pair. This function is recommended to generate a key pair based on the Curve25519 or Curve448
-            elliptic curves
+            A freshly generated private key, capable of performing Diffie-Hellman key exchanges with the
+            public key of another party.
+
+        Note:
+            This function is recommended to generate a key pair based on the Curve25519 or Curve448 elliptic
+            curves
             (https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms).
         """
 
-        raise NotImplementedError(
-            "Create a subclass of DiffieHellmanRatchet and implement `_generate_key_pair`."
-        )
+        raise NotImplementedError("Create a subclass of DiffieHellmanRatchet and implement `_generate_priv`.")
 
     @staticmethod
     @abstractmethod
-    def _perform_diffie_hellman(own_key_pair: KeyPair, other_public_key: bytes) -> bytes:
+    def _derive_pub(priv: bytes) -> bytes:
         """
+        Derive the public key from a private key as generated by :meth:`_generate_priv`.
+
         Args:
-            own_key_pair: The ratchet key pair including the private key of this instance.
-            other_public_key: The public key of the ratchet key pair of the other party.
+            priv: The private key as returned by :meth:`_generate_priv`.
 
         Returns:
-            A shared secret derived from the own ratchet key pair and the other parties' ratchet public key,
-            by performing Diffie-Hellman. This function is recommended to return the output from the X25519 or
+            The public key corresponding to the private key.
+        """
+
+        raise NotImplementedError("Create a subclass of DiffieHellmanRatchet and implement `_derive_pub`.")
+
+    @staticmethod
+    @abstractmethod
+    def _perform_diffie_hellman(own_priv: bytes, other_pub: bytes) -> bytes:
+        """
+        Args:
+            own_priv: The own ratchet private key.
+            other_pub: The ratchet public key of the other party.
+
+        Returns:
+            A shared secret agreed on via Diffie-Hellman. This method is recommended to perform X25519 or
             X448. There is no need to check for invalid public keys
             (https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms).
         """
@@ -160,33 +171,42 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
     # serialization #
     #################
 
-    def serialize(self) -> DiffieHellmanRatchetSerialized:
+    @property
+    def model(self) -> DiffieHellmanRatchetModel:
         """
         Returns:
-            The internal state of this instance in a JSON-friendly serializable format. Restore the instance
-            using :meth:`deserialize`.
+            The internal state of this :class:`DiffieHellmanRatchet` as a pydantic model.
         """
 
-        return {
-            "ratchet_key_pair"      : self.__ratchet_key_pair.serialize(),
-            "other_ratchet_pub"     : b64encode(self.__other_ratchet_pub).decode("ASCII"),
-            "root_chain"            : self.__root_chain.serialize(),
-            "symmetric_key_ratchet" : self.__symmetric_key_ratchet.serialize()
-        }
+        return DiffieHellmanRatchetModel(
+            own_ratchet_priv_b64=b64encode(self.__own_ratchet_priv),
+            other_ratchet_pub_b64=b64encode(self.__other_ratchet_pub),
+            root_chain=self.__root_chain.model,
+            symmetric_key_ratchet=self.__symmetric_key_ratchet.model
+        )
+
+    @property
+    def json(self) -> JSONObject:
+        """
+        Returns:
+            The internal state of this :class:`DiffieHellmanRatchet` as a JSON-serializable Python object.
+        """
+
+        return cast(JSONObject, json.loads(self.model.json()))
 
     @classmethod
-    def deserialize(
-        cls: Type[D],
-        serialized: JSONType,
+    def from_model(
+        cls: Type[DiffieHellmanRatchetTypeT],
+        model: DiffieHellmanRatchetModel,
         root_chain_kdf: Type[KDF],
         message_chain_kdf: Type[KDF],
         message_chain_constant: bytes,
         dos_protection_threshold: int
-    ) -> D:
-        # pylint: disable=protected-access
+    ) -> DiffieHellmanRatchetTypeT:
         """
         Args:
-            serialized: A serialized instance of this class, as produced by :meth:`serialize`.
+            model: The pydantic model holding the internal state of a :class:`DiffieHellmanRatchet`, as
+                produced by :meth:`model`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
             message_chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
@@ -196,101 +216,105 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
                 that number of message keys are skipped, the keys are not calculated to prevent being DoSed.
 
         Returns:
-            A configured instance of :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`
-            restored from the serialized data.
+            A configured instance of :class:`DiffieHellmanRatchet`, with internal state restored from the
+            model.
 
         Raises:
-            InconsistentSerializationException: if the serialized data does not contain an initialized sending
-                chain. This can only happen when migrating from pre-stable data a Diffie-Hellman ratchet that
-                was serialized before sending or receiving a single message. In this case, the serialized
-                Diffie-Hellman ratchet is basically uninitialized and can be discarded/replaced with a new
-                instance.
-            TypeAssertionException: if the serialized data is structured/typed incorrectly.
+            InconsistentSerializationException: if the serialized data is structurally correct, but
+                incomplete. This can only happen when migrating a
+                :class:`~doubleratchet.double_ratchet.DoubleRatchet` instance from pre-stable data that was
+                serialized before sending or receiving a single message. In this case, the serialized instance
+                is basically uninitialized and can be discarded/replaced with a new instance without losing
+                information.
+
+        Warning:
+            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
+            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            documentation for details.
         """
 
-        root = assert_type(dict, serialized)
-
         self = cls()
-        self.__ratchet_key_pair         = KeyPair.deserialize(assert_in(root, "ratchet_key_pair"))
-        self.__other_ratchet_pub        = assert_decode_base64(assert_type(str, root, "other_ratchet_pub"))
-        self.__root_chain               = KDFChain.deserialize(assert_in(root, "root_chain"), root_chain_kdf)
+        self.__own_ratchet_priv = b64decode(model.own_ratchet_priv_b64)
+        self.__other_ratchet_pub = b64decode(model.other_ratchet_pub_b64)
+        self.__root_chain = KDFChain.from_model(model.root_chain, root_chain_kdf)
         self.__dos_protection_threshold = dos_protection_threshold
-        self.__symmetric_key_ratchet    = skr = SymmetricKeyRatchet.deserialize(
-            assert_in(root, "symmetric_key_ratchet"),
+        self.__symmetric_key_ratchet = SymmetricKeyRatchet.from_model(
+            model.symmetric_key_ratchet,
             message_chain_kdf,
             message_chain_constant
         )
 
-        if skr.sending_chain_length is None:
+        if self.__symmetric_key_ratchet.sending_chain_length is None:
             raise InconsistentSerializationException(
-                "The serialized data does not contain an initialized sending chain."
+                "The restored internal state does not contain an initialized sending chain."
             )
 
         return self
+
+    @classmethod
+    def from_json(
+        cls: Type[DiffieHellmanRatchetTypeT],
+        serialized: JSONObject,
+        root_chain_kdf: Type[KDF],
+        message_chain_kdf: Type[KDF],
+        message_chain_constant: bytes,
+        dos_protection_threshold: int
+    ) -> DiffieHellmanRatchetTypeT:
+        """
+        Args:
+            serialized: A JSON-serializable Python object holding the internal state of a
+                :class:`DiffieHellmanRatchet`, as produced by :meth:`json`.
+            root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
+            message_chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
+                deriving 64 bytes.
+            message_chain_constant: The constant to feed into the sending and receiving KDF chains on each
+                step.
+            dos_protection_threshold: The maximum number of skipped message keys to calculate. If more than
+                that number of message keys are skipped, the keys are not calculated to prevent being DoSed.
+
+        Returns:
+            A configured instance of :class:`DiffieHellmanRatchet`, with internal state restored from the
+            serialized data.
+
+        Raises:
+            InconsistentSerializationException: if the serialized data is structurally correct, but
+                incomplete. This can only happen when migrating a
+                :class:`~doubleratchet.double_ratchet.DoubleRatchet` instance from pre-stable data that was
+                serialized before sending or receiving a single message. In this case, the serialized instance
+                is basically uninitialized and can be discarded/replaced with a new instance without losing
+                information.
+
+        Warning:
+            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
+            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            documentation for details.
+        """
+
+        return cls.from_model(
+            parse_diffie_hellman_ratchet_model(serialized),
+            root_chain_kdf,
+            message_chain_kdf,
+            message_chain_constant,
+            dos_protection_threshold
+        )
 
     ######################
     # ratchet management #
     ######################
 
     def __replace_chain(self, chain: Chain) -> None:
+        """
+        Replace one of the chains of the internal symmetric-key ratchet. The chain key is derived by feeding
+        the Diffie-Hellman shared secret to the root chain.
+
+        Args:
+            chain: The chain to replace.
+        """
+
         self.__symmetric_key_ratchet.replace_chain(chain, self.__root_chain.step(self._perform_diffie_hellman(
-            self.__ratchet_key_pair,
+            self.__own_ratchet_priv,
             self.__other_ratchet_pub
         ), 32))
-
-    def __update_diffie_hellman_ratchet(self, header: Header) -> SkippedMessageKeys:
-        """
-        Args:
-            header: The Diffie-Hellman ratchet header,
-
-        Returns:
-            The message keys that were skipped while updating the Diffie-Hellman ratchet.
-
-        Raises:
-            DoSProtectionException: If a huge number of message keys were skipped that have to be calculated
-                first before decrypting the next message.
-        """
-
-        skipped_mks: SkippedMessageKeys = OrderedDict()
-
-        if header.ratchet_pub != self.__other_ratchet_pub:
-            rchain_length = self.__symmetric_key_ratchet.receiving_chain_length
-            if rchain_length is not None:
-                num_skipped_keys = max(header.pn - rchain_length, 0)
-                if num_skipped_keys > self.__dos_protection_threshold:
-                    warnings.warn(
-                        "More than {} message keys skipped. Not calculating all of these message keys to"
-                        " prevent being DoSed."
-                        .format(self.__dos_protection_threshold)
-                    )
-                else:
-                    for i in range(num_skipped_keys):
-                        skipped_mks[(self.__other_ratchet_pub, rchain_length + i)] = (
-                            self.__symmetric_key_ratchet.next_decryption_key()
-                        )
-
-            self.__other_ratchet_pub = header.ratchet_pub
-            self.__replace_chain(Chain.Receiving)
-            self.__ratchet_key_pair = self._generate_key_pair()
-            self.__replace_chain(Chain.Sending)
-
-        rchain_length = self.__symmetric_key_ratchet.receiving_chain_length
-        assert rchain_length is not None # sanity check
-
-        num_skipped_keys = max(header.n - rchain_length, 0)
-        if num_skipped_keys > self.__dos_protection_threshold:
-            raise DoSProtectionException(
-                "More than {} message keys skipped. Not calculating all of these message keys to prevent"
-                " being DoSed."
-                .format(self.__dos_protection_threshold)
-            )
-
-        for i in range(num_skipped_keys):
-            skipped_mks[(self.__other_ratchet_pub, rchain_length + i)] = (
-                self.__symmetric_key_ratchet.next_decryption_key()
-            )
-
-        return skipped_mks
 
     def next_encryption_key(self) -> Tuple[bytes, Header]:
         """
@@ -300,12 +324,14 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
         """
 
         sending_chain_length = self.__symmetric_key_ratchet.sending_chain_length
-        assert sending_chain_length is not None # sanity check
+        assert sending_chain_length is not None  # sanity check
+
+        previous_sending_chain_length = self.__symmetric_key_ratchet.previous_sending_chain_length or 0
 
         header = Header(
-            ratchet_pub = self.__ratchet_key_pair.pub,
-            pn = default(self.__symmetric_key_ratchet.previous_sending_chain_length, 0),
-            n  = sending_chain_length
+            ratchet_pub=self._derive_pub(self.__own_ratchet_priv),
+            previous_sending_chain_length=previous_sending_chain_length,
+            sending_chain_length=sending_chain_length
         )
 
         next_encryption_key = self.__symmetric_key_ratchet.next_encryption_key()
@@ -322,21 +348,66 @@ class DiffieHellmanRatchet(metaclass=ABCMeta):
             skipped while deriving the new decryption key.
 
         Raises:
-            DoSProtectionException: If a huge number of message keys were skipped that have to be calculated
+            DoSProtectionException: if a huge number of message keys were skipped that have to be calculated
                 first before decrypting the next message.
-            DuplicateMessageException: If this message appears to be a duplicate.
+            DuplicateMessageException: if this message appears to be a duplicate.
         """
 
-        skipped_message_keys = self.__update_diffie_hellman_ratchet(header)
+        skipped_message_keys: SkippedMessageKeys = OrderedDict()
 
-        rchain_length = self.__symmetric_key_ratchet.receiving_chain_length
-        assert rchain_length is not None # sanity check
+        # Perform a ratchet step if the ratchet public keys differ
+        if header.ratchet_pub != self.__other_ratchet_pub:
+            # If there is a receiving chain, calculate skipped message keys before replacing the chain
+            receiving_chain_length = self.__symmetric_key_ratchet.receiving_chain_length
+            if receiving_chain_length is not None:
+                # Check whether the number of skipped message keys is within reasonable bounds
+                num_skipped_keys = max(header.previous_sending_chain_length - receiving_chain_length, 0)
+                if num_skipped_keys > self.__dos_protection_threshold:
+                    # This is a warning rather than an exception, to make sure that in case of heavy message
+                    # loss, the ratchet is not fully blocked from moving forward/"recovering" through a
+                    # ratchet step.
+                    warnings.warn(
+                        f"More than {self.__dos_protection_threshold} message keys skipped. Not calculating"
+                        " all of these message keys to prevent being DoSed."
+                    )
+                else:
+                    # Calculate the skipped message keys
+                    for _ in range(num_skipped_keys):
+                        skipped_message_keys[(self.__other_ratchet_pub, receiving_chain_length)] = \
+                            self.__symmetric_key_ratchet.next_decryption_key()
+                        receiving_chain_length += 1
 
-        if header.n < rchain_length:
-            raise DuplicateMessageException(
-                "It seems like this message was already decrypted before. Header: {}".format(header)
+            # Perform one full ratchet step, by replacing both the receiving and the sending chains
+            self.__other_ratchet_pub = header.ratchet_pub
+            self.__replace_chain(Chain.RECEIVING)
+            self.__own_ratchet_priv = self._generate_priv()
+            self.__replace_chain(Chain.SENDING)
+
+        # Once the chains are prepared, forward the receiving chain to the required key
+        receiving_chain_length = self.__symmetric_key_ratchet.receiving_chain_length
+        assert receiving_chain_length is not None  # sanity check
+
+        # Check whether the number of skipped message keys is within reasonable bounds
+        num_skipped_keys = max(header.sending_chain_length - receiving_chain_length, 0)
+        if num_skipped_keys > self.__dos_protection_threshold:
+            raise DoSProtectionException(
+                f"More than {self.__dos_protection_threshold} message keys skipped. Not calculating all of"
+                " these message keys to prevent being DoSed."
             )
 
+        # Calculate the skipped message keys and keep the receiving chain length updated
+        for _ in range(num_skipped_keys):
+            skipped_message_keys[(self.__other_ratchet_pub, receiving_chain_length)] = \
+                self.__symmetric_key_ratchet.next_decryption_key()
+            receiving_chain_length += 1
+
+        # Check whether a message key is requested that was derived before
+        if header.sending_chain_length < receiving_chain_length:
+            raise DuplicateMessageException(
+                f"It seems like this message was already decrypted before. Header: {header}"
+            )
+
+        # Finally, derive the requested message key and return it with the skipped message keys
         next_decryption_key = self.__symmetric_key_ratchet.next_decryption_key()
 
         return next_decryption_key, skipped_message_keys
