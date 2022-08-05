@@ -1,3 +1,4 @@
+# This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
 import enum
@@ -31,8 +32,8 @@ class Chain(enum.Enum):
     Enumeration identifying the chain to replace by :meth:`SymmetricKeyRatchet.replace_chain`.
     """
 
-    SENDING = "SENDING"
-    RECEIVING = "RECEIVING"
+    SENDING: str = "SENDING"
+    RECEIVING: str = "RECEIVING"
 
 
 SymmetricKeyRatchetTypeT = TypeVar("SymmetricKeyRatchetTypeT", bound="SymmetricKeyRatchet")
@@ -111,7 +112,7 @@ class SymmetricKeyRatchet:
         """
         Args:
             model: The pydantic model holding the internal state of a :class:`SymmetricKeyRatchet`, as
-                produced by :meth:`model`.
+                produced by :attr:`model`.
             chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
             constant: The constant to feed into the sending and receiving KDF chains on each step.
@@ -121,8 +122,8 @@ class SymmetricKeyRatchet:
             model.
 
         Warning:
-            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
-            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            Migrations are not provided via the :attr:`model`/:meth:`from_model` API. Use
+            :attr:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
             documentation for details.
         """
 
@@ -151,7 +152,7 @@ class SymmetricKeyRatchet:
         """
         Args:
             serialized: A JSON-serializable Python object holding the internal state of a
-                :class:`SymmetricKeyRatchet`, as produced by :meth:`json`.
+                :class:`SymmetricKeyRatchet`, as produced by :attr:`json`.
             chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
             constant: The constant to feed into the sending and receiving KDF chains on each step.

@@ -1,2 +1,2 @@
-cryptography>=3.3.2,<37
-pydantic>=1.7.4,<2
+cryptography>=3.3.2
+pydantic>=1.7.4

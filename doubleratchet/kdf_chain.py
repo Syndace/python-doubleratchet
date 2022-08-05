@@ -1,3 +1,4 @@
+# This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from base64 import b64encode, b64decode
@@ -76,15 +77,15 @@ class KDFChain:
         """
         Args:
             model: The pydantic model holding the internal state of a :class:`KDFChain`, as produced by
-                :meth:`model`.
+                :attr:`model`.
             kdf: The KDF to use for the derivation step.
 
         Returns:
             A configured instance of :class:`KDFChain`, with internal state restored from the model.
 
         Warning:
-            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
-            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            Migrations are not provided via the :attr:`model`/:meth:`from_model` API. Use
+            :attr:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
             documentation for details.
         """
 
@@ -100,7 +101,7 @@ class KDFChain:
         """
         Args:
             serialized: A JSON-serializable Python object holding the internal state of a :class:`KDFChain`,
-                as produced by :meth:`json`.
+                as produced by :attr:`json`.
             kdf: The KDF to use for the derivation step.
 
         Returns:

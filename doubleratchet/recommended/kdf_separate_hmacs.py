@@ -16,10 +16,11 @@ class KDF(kdf.KDF):
     """
     This implementation uses HMAC with SHA-256 or SHA-512 to derive multiple outputs from a single KDF key.
     These outputs are concatenated and returned as a whole. The KDF key is used as the HMAC key, the KDF data
-    is split into single bytes and one HMAC is calculated for each byte. For example, passing b"\x01\x02" as
-    the KDF data results in two HMACs being calculated, one using b"\x01" as the HMAC input and the other
-    using b"\x02". The two HMAC outputs are concatenated and returned. Note that the length of the output is
-    fixed to a multiple of the HMAC digest size, based on the length of the KDF data.
+    is split into single bytes and one HMAC is calculated for each byte. For example, passing
+    ``b"\\x01\\x02"`` as the KDF data results in two HMACs being calculated, one using ``b"\\x01"`` as the
+    HMAC input and the other using ``b"\\x02"``. The two HMAC outputs are concatenated and returned. Note that
+    the length of the output is fixed to a multiple of the HMAC digest size, based on the length of the KDF
+    data.
 
     https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms
     """

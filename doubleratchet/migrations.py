@@ -1,3 +1,4 @@
+# This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from typing import Dict, List, Optional, cast
@@ -94,7 +95,7 @@ class PreStableModel(BaseModel):
 def parse_diffie_hellman_ratchet_model(serialized: JSONObject) -> DiffieHellmanRatchetModel:
     """
     Parse a serialized :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet` instance, as
-    returned by :meth:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet.json`, into the most recent
+    returned by :attr:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet.json`, into the most recent
     pydantic model available for the class. Perform migrations in case the pydantic models were updated.
 
     Args:
@@ -103,6 +104,9 @@ def parse_diffie_hellman_ratchet_model(serialized: JSONObject) -> DiffieHellmanR
     Returns:
         The model, which can be used to restore the instance using
         :meth:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet.from_model`.
+
+    Note:
+        Pre-stable data can only be migrated as a whole using :func:`parse_double_ratchet_model`.
     """
 
     # Each model has a Python string "version" in its root. Use that to find the model that the data was
@@ -121,8 +125,9 @@ def parse_diffie_hellman_ratchet_model(serialized: JSONObject) -> DiffieHellmanR
 def parse_double_ratchet_model(serialized: JSONObject) -> DoubleRatchetModel:
     """
     Parse a serialized :class:`~doubleratchet.double_ratchet.DoubleRatchet` instance, as returned by
-    :meth:`~doubleratchet.double_ratchet.DoubleRatchet.json`, into the most recent pydantic model available
-    for the class. Perform migrations in case the pydantic models were updated.
+    :attr:`~doubleratchet.double_ratchet.DoubleRatchet.json`, into the most recent pydantic model available
+    for the class. Perform migrations in case the pydantic models were updated. Supports migration of
+    pre-stable data.
 
     Args:
         serialized: The serialized instance.
@@ -205,7 +210,7 @@ def parse_double_ratchet_model(serialized: JSONObject) -> DoubleRatchetModel:
 def parse_kdf_chain_model(serialized: JSONObject) -> KDFChainModel:
     """
     Parse a serialized :class:`~doubleratchet.kdf_chain.KDFChain` instance, as returned by
-    :meth:`~doubleratchet.kdf_chain.KDFChain.json`, into the most recent pydantic model available for the
+    :attr:`~doubleratchet.kdf_chain.KDFChain.json`, into the most recent pydantic model available for the
     class. Perform migrations in case the pydantic models were updated.
 
     Args:
@@ -214,6 +219,9 @@ def parse_kdf_chain_model(serialized: JSONObject) -> KDFChainModel:
     Returns:
         The model, which can be used to restore the instance using
         :meth:`~doubleratchet.kdf_chain.KDFChain.from_model`.
+
+    Note:
+        Pre-stable data can only be migrated as a whole using :func:`parse_double_ratchet_model`.
     """
 
     # Each model has a Python string "version" in its root. Use that to find the model that the data was
@@ -232,7 +240,7 @@ def parse_kdf_chain_model(serialized: JSONObject) -> KDFChainModel:
 def parse_symmetric_key_ratchet_model(serialized: JSONObject) -> SymmetricKeyRatchetModel:
     """
     Parse a serialized :class:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet` instance, as returned
-    by :meth:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet.json`, into the most recent pydantic
+    by :attr:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet.json`, into the most recent pydantic
     model available for the class. Perform migrations in case the pydantic models were updated.
 
     Args:
@@ -241,6 +249,9 @@ def parse_symmetric_key_ratchet_model(serialized: JSONObject) -> SymmetricKeyRat
     Returns:
         The model, which can be used to restore the instance using
         :meth:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet.from_model`.
+
+    Note:
+        Pre-stable data can only be migrated as a whole using :func:`parse_double_ratchet_model`.
     """
 
     # Each model has a Python string "version" in its root. Use that to find the model that the data was

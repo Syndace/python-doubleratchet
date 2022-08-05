@@ -1,3 +1,4 @@
+# This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from abc import ABC, abstractmethod
@@ -280,7 +281,7 @@ class DoubleRatchet(ABC):
         """
         Args:
             model: The pydantic model holding the internal state of a :class:`DoubleRatchet`, as produced
-                by :meth:`model`.
+                by :attr:`model`.
             diffie_hellman_ratchet_class: A non-abstract subclass of
                 :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
@@ -305,8 +306,8 @@ class DoubleRatchet(ABC):
                 :meth:`encrypt_initial_message` or :meth:`decrypt_initial_message` without losing information.
 
         Warning:
-            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
-            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            Migrations are not provided via the :attr:`model`/:meth:`from_model` API. Use
+            :attr:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
             documentation for details.
         """
 
@@ -348,7 +349,7 @@ class DoubleRatchet(ABC):
         """
         Args:
             serialized: A JSON-serializable Python object holding the internal state of a
-                :class:`DoubleRatchet`, as produced by :meth:`json`.
+                :class:`DoubleRatchet`, as produced by :attr:`json`.
             diffie_hellman_ratchet_class: A non-abstract subclass of
                 :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.

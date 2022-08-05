@@ -1,4 +1,5 @@
 import enum
+from typing import NoReturn
 
 from cryptography.hazmat.primitives import hashes
 
@@ -6,6 +7,11 @@ from cryptography.hazmat.primitives import hashes
 __all__ = [  # pylint: disable=unused-variable
     "HashFunction"
 ]
+
+
+# See https://github.com/python/mypy/issues/6366
+def _assert_never(value: NoReturn) -> NoReturn:
+    assert False, f"Unhandled type: {type(value).__name__}"
 
 
 @enum.unique
@@ -17,11 +23,10 @@ class HashFunction(enum.Enum):
     and truncated SHA-512 to 256 bits.
     """
 
-    SHA_256: str = "SHA-256"
-    SHA_512: str = "SHA-512"
-    SHA_512_256: str = "SHA-512-256"
+    SHA_256: str = "SHA_256"
+    SHA_512: str = "SHA_512"
+    SHA_512_256: str = "SHA_512_256"
 
-    # pylint: disable=inconsistent-return-statements
     @property
     def as_cryptography(self) -> hashes.HashAlgorithm:
         """
@@ -35,3 +40,4 @@ class HashFunction(enum.Enum):
             return hashes.SHA512()
         if self is HashFunction.SHA_512_256:
             return hashes.SHA512_256()
+        _assert_never(self)

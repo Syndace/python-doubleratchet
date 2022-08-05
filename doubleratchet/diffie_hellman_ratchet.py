@@ -1,3 +1,4 @@
+# This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from abc import ABC, abstractmethod
@@ -226,7 +227,7 @@ class DiffieHellmanRatchet(ABC):
         """
         Args:
             model: The pydantic model holding the internal state of a :class:`DiffieHellmanRatchet`, as
-                produced by :meth:`model`.
+                produced by :attr:`model`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
             message_chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
@@ -248,8 +249,8 @@ class DiffieHellmanRatchet(ABC):
                 information.
 
         Warning:
-            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
-            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            Migrations are not provided via the :attr:`model`/:meth:`from_model` API. Use
+            :attr:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
             documentation for details.
         """
 
@@ -283,7 +284,7 @@ class DiffieHellmanRatchet(ABC):
         """
         Args:
             serialized: A JSON-serializable Python object holding the internal state of a
-                :class:`DiffieHellmanRatchet`, as produced by :meth:`json`.
+                :class:`DiffieHellmanRatchet`, as produced by :attr:`json`.
             root_chain_kdf: The KDF to use for the root chain. The KDF must be capable of deriving 64 bytes.
             message_chain_kdf: The KDF to use for the sending and receiving chains. The KDF must be capable of
                 deriving 64 bytes.
@@ -305,8 +306,8 @@ class DiffieHellmanRatchet(ABC):
                 information.
 
         Warning:
-            Migrations are not provided via the :meth:`model`/:meth:`from_model` API. Use
-            :meth:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
+            Migrations are not provided via the :attr:`model`/:meth:`from_model` API. Use
+            :attr:`json`/:meth:`from_json` instead. Refer to :ref:`serialization_and_migration` in the
             documentation for details.
         """
 
