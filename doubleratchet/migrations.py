@@ -1,6 +1,7 @@
 # This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
+import base64
 from typing import Dict, List, Optional, cast
 
 from pydantic import BaseModel
@@ -173,27 +174,27 @@ def parse_double_ratchet_model(serialized: JSONObject) -> DoubleRatchetModel:
         for key, message_key in model.smks.items():
             key_model = PreStableSMKKeyModel.parse_raw(key)
             skipped_message_keys.append(SkippedMessageKeyModel(
-                ratchet_pub_b64=key_model.pub.encode("ASCII"),
+                ratchet_pub=base64.b64decode(key_model.pub),
                 index=key_model.index,
-                message_key_b64=message_key.encode("ASCII")
+                message_key=base64.b64decode(message_key)
             ))
 
         model = DoubleRatchetModel(
             diffie_hellman_ratchet=DiffieHellmanRatchetModel(
-                own_ratchet_priv_b64=model.super.own_key.priv.encode("ASCII"),
-                other_ratchet_pub_b64=model.super.other_pub.pub.encode("ASCII"),
+                own_ratchet_priv=base64.b64decode(model.super.own_key.priv),
+                other_ratchet_pub=base64.b64decode(model.super.other_pub.pub),
                 root_chain=KDFChainModel(
                     length=model.super.root_chain.length,
-                    key_b64=model.super.root_chain.key.encode("ASCII")
+                    key=base64.b64decode(model.super.root_chain.key)
                 ),
                 symmetric_key_ratchet=SymmetricKeyRatchetModel(
                     receiving_chain=None if model.skr.rchain is None else KDFChainModel(
                         length=model.skr.rchain.length,
-                        key_b64=model.skr.rchain.key.encode("ASCII")
+                        key=base64.b64decode(model.skr.rchain.key)
                     ),
                     sending_chain=None if model.skr.schain is None else KDFChainModel(
                         length=model.skr.schain.length,
-                        key_b64=model.skr.schain.key.encode("ASCII")
+                        key=base64.b64decode(model.skr.schain.key)
                     ),
                     previous_sending_chain_length=model.skr.prev_schain_length
                 )

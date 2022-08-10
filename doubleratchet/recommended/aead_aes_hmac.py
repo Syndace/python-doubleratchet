@@ -5,9 +5,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.ciphers.base import _CipherContext
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.padding import PKCS7, _PKCS7PaddingContext, _PKCS7UnpaddingContext
+from cryptography.hazmat.primitives.padding import PKCS7
 
 from .hash_function import HashFunction
 from .. import aead
@@ -54,17 +53,17 @@ class AEAD(aead.AEAD):
         encryption_key, authentication_key, iv = cls.__derive(key, hash_function, cls._get_info())
 
         # Prepare PKCS#7 padded plaintext
-        padder: _PKCS7PaddingContext = PKCS7(128).padder()  # type: ignore[no-untyped-call]
+        padder = PKCS7(128).padder()
         padded_plaintext = padder.update(plaintext) + padder.finalize()
 
         # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
         # previously created key and IV
-        aes: _CipherContext = Cipher(
+        aes = Cipher(
             algorithms.AES(encryption_key),
             modes.CBC(iv),
             backend=default_backend()
-        ).encryptor()  # type: ignore[no-untyped-call]
-        ciphertext = aes.update(padded_plaintext) + aes.finalize()
+        ).encryptor()
+        ciphertext = aes.update(padded_plaintext) + aes.finalize()  # pylint: disable=no-member
 
         # Calculate the authentication tag
         auth = hmac.HMAC(authentication_key, hash_function, backend=default_backend())
@@ -97,18 +96,18 @@ class AEAD(aead.AEAD):
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
         # previously created key and IV
         try:
-            aes: _CipherContext = Cipher(
+            aes = Cipher(
                 algorithms.AES(decryption_key),
                 modes.CBC(iv),
                 backend=default_backend()
-            ).decryptor()  # type: ignore[no-untyped-call]
-            padded_plaintext = aes.update(ciphertext) + aes.finalize()
+            ).decryptor()
+            padded_plaintext = aes.update(ciphertext) + aes.finalize()  # pylint: disable=no-member
         except ValueError as e:
             raise aead.DecryptionFailedException("Decryption failed.") from e
 
         # Remove the PKCS#7 padding from the plaintext
         try:
-            unpadder: _PKCS7UnpaddingContext = PKCS7(128).unpadder()  # type: ignore[no-untyped-call]
+            unpadder = PKCS7(128).unpadder()
             plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
         except ValueError as e:
             raise aead.DecryptionFailedException("Plaintext padded incorrectly.") from e

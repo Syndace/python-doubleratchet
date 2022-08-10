@@ -1,7 +1,6 @@
 # This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
 from __future__ import annotations  # pylint: disable=unused-variable
 
-from base64 import b64encode, b64decode
 import json
 from typing import Type, TypeVar, cast
 
@@ -58,10 +57,7 @@ class KDFChain:
             The internal state of this :class:`KDFChain` as a pydantic model.
         """
 
-        return KDFChainModel(
-            length=self.__length,
-            key_b64=b64encode(self.__key)
-        )
+        return KDFChainModel(length=self.__length, key=self.__key)
 
     @property
     def json(self) -> JSONObject:
@@ -91,7 +87,7 @@ class KDFChain:
 
         self = cls()
         self.__kdf = kdf
-        self.__key = b64decode(model.key_b64)
+        self.__key = model.key
         self.__length = model.length
 
         return self

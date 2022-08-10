@@ -2,7 +2,6 @@
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from abc import ABC, abstractmethod
-from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
 import itertools
@@ -251,9 +250,9 @@ class DoubleRatchet(ABC):
         return DoubleRatchetModel(
             diffie_hellman_ratchet=self.__diffie_hellman_ratchet.model,
             skipped_message_keys=[ SkippedMessageKeyModel(
-                ratchet_pub_b64=b64encode(ratchet_pub),
+                ratchet_pub=ratchet_pub,
                 index=index,
-                message_key_b64=b64encode(message_key)
+                message_key=message_key
             ) for (ratchet_pub, index), message_key in self.__skipped_message_keys.items() ]
         )
 
@@ -319,7 +318,7 @@ class DoubleRatchet(ABC):
         self = cls()
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
         self.__skipped_message_keys = OrderedDict(
-            ((b64decode(smk.ratchet_pub_b64), smk.index), b64decode(smk.message_key_b64))
+            ((smk.ratchet_pub, smk.index), smk.message_key)
             for smk
             in model.skipped_message_keys
         )

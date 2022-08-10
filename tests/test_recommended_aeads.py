@@ -5,8 +5,7 @@ from typing import Optional, Set, Type
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.ciphers.base import _CipherContext
-from cryptography.hazmat.primitives.padding import PKCS7, _PKCS7PaddingContext
+from cryptography.hazmat.primitives.padding import PKCS7
 
 from doubleratchet import AuthenticationFailedException, DecryptionFailedException
 from doubleratchet.recommended import aead_aes_hmac, HashFunction
@@ -99,7 +98,7 @@ def make_aead(
                 # Flip a random bit of the IV
                 iv = flip_random_bit(iv)
 
-            padder: _PKCS7PaddingContext = PKCS7(128).padder()  # type: ignore[no-untyped-call]
+            padder = PKCS7(128).padder()
             padded_plaintext = padder.update(plaintext) + padder.finalize()
 
             if modify is EvilEncryptModification.PADDING:
@@ -108,12 +107,12 @@ def make_aead(
                 padded_plaintext_mut[-1] ^= 1 << 7
                 padded_plaintext = bytes(padded_plaintext_mut)
 
-            aes: _CipherContext = Cipher(
+            aes = Cipher(
                 algorithms.AES(encryption_key),
                 modes.CBC(iv),
                 backend=default_backend()
-            ).encryptor()  # type: ignore[no-untyped-call]
-            ciphertext = aes.update(padded_plaintext) + aes.finalize()
+            ).encryptor()
+            ciphertext = aes.update(padded_plaintext) + aes.finalize()  # pylint: disable=no-member
 
             if modify is EvilEncryptModification.CIPHERTEXT:
                 # Remove the last byte of the ciphertext

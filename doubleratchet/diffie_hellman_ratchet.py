@@ -2,7 +2,6 @@
 from __future__ import annotations  # pylint: disable=unused-variable
 
 from abc import ABC, abstractmethod
-from base64 import b64encode, b64decode
 from collections import OrderedDict
 import json
 from typing import Optional, Tuple, Type, TypeVar, cast
@@ -200,8 +199,8 @@ class DiffieHellmanRatchet(ABC):
         """
 
         return DiffieHellmanRatchetModel(
-            own_ratchet_priv_b64=b64encode(self.__own_ratchet_priv),
-            other_ratchet_pub_b64=b64encode(self.__other_ratchet_pub),
+            own_ratchet_priv=self.__own_ratchet_priv,
+            other_ratchet_pub=self.__other_ratchet_pub,
             root_chain=self.__root_chain.model,
             symmetric_key_ratchet=self.__symmetric_key_ratchet.model
         )
@@ -255,8 +254,8 @@ class DiffieHellmanRatchet(ABC):
         """
 
         self = cls()
-        self.__own_ratchet_priv = b64decode(model.own_ratchet_priv_b64)
-        self.__other_ratchet_pub = b64decode(model.other_ratchet_pub_b64)
+        self.__own_ratchet_priv = model.own_ratchet_priv
+        self.__other_ratchet_pub = model.other_ratchet_pub
         self.__root_chain = KDFChain.from_model(model.root_chain, root_chain_kdf)
         self.__dos_protection_threshold = dos_protection_threshold
         self.__symmetric_key_ratchet = SymmetricKeyRatchet.from_model(
