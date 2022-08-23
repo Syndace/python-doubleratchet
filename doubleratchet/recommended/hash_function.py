@@ -1,5 +1,5 @@
 import enum
-from typing import NoReturn
+from typing_extensions import assert_never
 
 from cryptography.hazmat.primitives import hashes
 
@@ -7,11 +7,6 @@ from cryptography.hazmat.primitives import hashes
 __all__ = [  # pylint: disable=unused-variable
     "HashFunction"
 ]
-
-
-# See https://github.com/python/mypy/issues/6366
-def _assert_never(value: NoReturn) -> NoReturn:
-    assert False, f"Unhandled type: {type(value).__name__}"
 
 
 @enum.unique
@@ -40,4 +35,5 @@ class HashFunction(enum.Enum):
             return hashes.SHA512()
         if self is HashFunction.SHA_512_256:
             return hashes.SHA512_256()
-        _assert_never(self)
+
+        return assert_never(self)

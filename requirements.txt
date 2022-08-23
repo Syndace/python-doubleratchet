@@ -1,2 +1,3 @@
 cryptography>=3.3.2
 pydantic>=1.7.4
+typing-extensions>=4.3.0

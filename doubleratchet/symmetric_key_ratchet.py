@@ -3,7 +3,8 @@ from __future__ import annotations  # pylint: disable=unused-variable
 
 import enum
 import json
-from typing import NoReturn, Optional, Type, TypeVar, cast
+from typing import Optional, Type, TypeVar, cast
+from typing_extensions import assert_never
 
 from .kdf import KDF
 from .kdf_chain import KDFChain
@@ -17,11 +18,6 @@ __all__ = [  # pylint: disable=unused-variable
     "ChainNotAvailableException",
     "SymmetricKeyRatchet"
 ]
-
-
-# See https://github.com/python/mypy/issues/6366
-def _assert_never(value: NoReturn) -> NoReturn:
-    assert False, f"Unhandled type: {type(value).__name__}"
 
 
 class ChainNotAvailableException(Exception):
@@ -188,13 +184,10 @@ class SymmetricKeyRatchet:
         if chain is Chain.SENDING:
             self.__previous_sending_chain_length = self.sending_chain_length
             self.__sending_chain = KDFChain.create(self.__kdf, key)
-            return
-
-        if chain is Chain.RECEIVING:
+        elif chain is Chain.RECEIVING:
             self.__receiving_chain = KDFChain.create(self.__kdf, key)
-            return
-
-        _assert_never(chain)
+        else:
+            assert_never(chain)
 
     @property
     def previous_sending_chain_length(self) -> Optional[int]:
