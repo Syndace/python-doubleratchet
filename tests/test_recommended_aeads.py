@@ -8,9 +8,16 @@ from cryptography.hazmat.primitives.padding import PKCS7
 
 from doubleratchet import AuthenticationFailedException, DecryptionFailedException
 from doubleratchet.recommended import aead_aes_hmac, HashFunction
-from doubleratchet.recommended.crypto_provider_cryptography import CryptoProviderImpl
+from doubleratchet.recommended.crypto_provider import CryptoProvider
 
 from .test_recommended_kdfs import generate_unique_random_data
+
+
+CryptoProviderImpl: Type[CryptoProvider]
+try:
+    from doubleratchet.recommended.crypto_provider_brython import CryptoProviderImpl
+except ImportError:
+    from doubleratchet.recommended.crypto_provider_cryptography import CryptoProviderImpl
 
 
 __all__ = [
