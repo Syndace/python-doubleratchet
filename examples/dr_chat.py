@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import os
 import pickle
@@ -98,7 +99,7 @@ ad = "Alice + Bob".encode("ASCII")
 shared_secret = "**32 bytes of very secret data**".encode("ASCII")
 
 
-def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet]:
+async def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet]:
     """
     Create the Double Ratchets for Alice and Bob by encrypting/decrypting an initial message.
 
@@ -115,7 +116,7 @@ def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet
     bob_ratchet_pub = bob_ratchet_priv.public_key()
 
     # Create Alice' Double Ratchet by encrypting the initial message for Bob:
-    alice_dr, initial_message_encrypted = DoubleRatchet.encrypt_initial_message(
+    alice_dr, initial_message_encrypted = await DoubleRatchet.encrypt_initial_message(
         shared_secret=shared_secret,
         recipient_ratchet_pub=bob_ratchet_pub.public_bytes(
             encoding=serialization.Encoding.Raw,
@@ -128,7 +129,7 @@ def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet
     print(f"Alice> {message.decode('UTF-8')}")
 
     # Create Bobs' Double Ratchet by decrypting the initial message from Alice:
-    bob_dr, initial_message_decrypted = DoubleRatchet.decrypt_initial_message(
+    bob_dr, initial_message_decrypted = await DoubleRatchet.decrypt_initial_message(
         shared_secret=shared_secret,
         own_ratchet_priv=bob_ratchet_priv.private_bytes(
             encoding=serialization.Encoding.Raw,
@@ -150,7 +151,7 @@ def create_double_ratchets(message: bytes) -> Tuple[DoubleRatchet, DoubleRatchet
 Deferred = Dict[str, List[EncryptedMessage]]
 
 
-def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> bool:
+async def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> bool:
     """
     The loop logic of this chat example.
 
@@ -188,7 +189,7 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
         message = input(f"{sender}> ")
 
         # Encrypt the message for the receiver
-        message_encrypted = sender_dr.encrypt_message(message.encode("UTF-8"), ad)
+        message_encrypted = await sender_dr.encrypt_message(message.encode("UTF-8"), ad)
 
         while True:
             send_or_defer = input("Send the message or save it for later? (s or d): ")
@@ -197,7 +198,7 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
 
         if send_or_defer == "s":
             # Now the receiver can decrypt the message
-            message_decrypted = receiver_dr.decrypt_message(message_encrypted, ad)
+            message_decrypted = await receiver_dr.decrypt_message(message_encrypted, ad)
 
             print(f"{receiver}< {message_decrypted.decode('UTF-8')}")
 
@@ -233,14 +234,14 @@ def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> 
             del deferred[sender][message_index]
 
             # Now the receiver can decrypt the message
-            message_decrypted = receiver_dr.decrypt_message(message_encrypted, ad)
+            message_decrypted = await receiver_dr.decrypt_message(message_encrypted, ad)
 
             print(f"{receiver}< {message_decrypted.decode('UTF-8')}")
 
     return action != "q"
 
 
-def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> None:
+async def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred) -> None:
     """
     The main loop of this chat example.
 
@@ -252,7 +253,7 @@ def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred
 
     while True:
         try:
-            if not loop(alice_dr, bob_dr, deferred):
+            if not await loop(alice_dr, bob_dr, deferred):
                 break
         except BaseException:  # pylint: disable=broad-except
             print("Exception raised while processing:")
@@ -263,7 +264,7 @@ def main_loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferred
         print("")
 
 
-def main() -> None:
+async def main() -> None:
     """
     The entry point for this chat example. Parses command line args, loads cached data, runs the mainloop and
     caches data before quitting.
@@ -309,10 +310,10 @@ def main() -> None:
             pass
 
     if alice_dr is None or bob_dr is None or deferred is None:
-        alice_dr, bob_dr = create_double_ratchets("(initial message)".encode("UTF-8"))
+        alice_dr, bob_dr = await create_double_ratchets("(initial message)".encode("UTF-8"))
         deferred = { "Alice": [], "Bob": [] }
 
-    main_loop(alice_dr, bob_dr, deferred)
+    await main_loop(alice_dr, bob_dr, deferred)
 
     if not args.ignore_cache:
         with open(os.path.join(storage_dir, "alice_dr.json"), "w", encoding="utf-8") as alice_dr_json:
@@ -326,4 +327,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
