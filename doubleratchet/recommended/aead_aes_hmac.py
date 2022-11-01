@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Tuple
 
 from .crypto_provider import HashFunction
-from .crypto_provider_cryptography import CryptoProviderImpl
+from .crypto_provider_impl import CryptoProviderImpl
 from .. import aead
 
 
