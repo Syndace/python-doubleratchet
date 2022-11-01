@@ -1,9 +1,7 @@
 from abc import abstractmethod
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-
-from .hash_function import HashFunction
+from .crypto_provider import HashFunction
+from .crypto_provider_cryptography import CryptoProviderImpl
 from .. import kdf
 
 
@@ -32,11 +30,11 @@ class KDF(kdf.KDF):
         raise NotImplementedError("Create a subclass and override `_get_info`.")
 
     @classmethod
-    def derive(cls, key: bytes, data: bytes, length: int) -> bytes:
-        return HKDF(
-            algorithm=cls._get_hash_function().as_cryptography,
+    async def derive(cls, key: bytes, data: bytes, length: int) -> bytes:
+        return await CryptoProviderImpl.hkdf_derive(
+            hash_function=cls._get_hash_function(),
             length=length,
             salt=key,
             info=cls._get_info(),
-            backend=default_backend()
-        ).derive(data)
+            key_material=data
+        )

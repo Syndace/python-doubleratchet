@@ -11,6 +11,14 @@ __all__ = [  # pylint: disable=unused-variable
 ]
 
 
+try:
+    import pytest
+except ImportError:
+    pass
+else:
+    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+
+
 def make_kdf_hkdf(hash_function: HashFunction, info: bytes) -> Type[kdf_hkdf.KDF]:
     """
     Create a subclass of :class:`~doubleratchet.recommended.kdf_hkdf.KDF` using given hash function and info.
@@ -75,7 +83,7 @@ def generate_unique_random_data(lower_bound: int, upper_bound: int, data_set: Se
             return data
 
 
-def test_kdf_hkdf() -> None:
+async def test_kdf_hkdf() -> None:
     """
     Test the HKDF-based recommended KDF implementation.
     """
@@ -92,13 +100,13 @@ def test_kdf_hkdf() -> None:
             input_data = generate_unique_random_data(0, 2 ** 16, input_data_set)
             info = generate_unique_random_data(0, 2 ** 16, info_set)
 
-            output_data_length = random.randrange(2, 255 * hash_function.as_cryptography.digest_size + 1)
+            output_data_length = random.randrange(2, 255 * hash_function.hash_size + 1)
 
             # Prepare the KDF
             KDF = make_kdf_hkdf(hash_function, info)
 
             # Perform a key derivation
-            output_data = KDF.derive(key, input_data, output_data_length)
+            output_data = await KDF.derive(key, input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length
@@ -107,11 +115,11 @@ def test_kdf_hkdf() -> None:
 
             # Assert determinism
             for _ in range(25):
-                output_data_repeated = KDF.derive(key, input_data, output_data_length)
+                output_data_repeated = await KDF.derive(key, input_data, output_data_length)
                 assert output_data_repeated == output_data
 
 
-def test_kdf_separate_hmacs() -> None:
+async def test_kdf_separate_hmacs() -> None:
     """
     Test the separate HMAC-based recommended KDF implementation.
     """
@@ -129,10 +137,10 @@ def test_kdf_separate_hmacs() -> None:
             key = generate_unique_random_data(0, 2 ** 16, key_set)
             input_data = generate_unique_random_data(1, 2 ** 8, input_data_set)
 
-            output_data_length = len(input_data) * hash_function.as_cryptography.digest_size
+            output_data_length = len(input_data) * hash_function.hash_size
 
             # Perform a key derivation
-            output_data = KDF.derive(key, input_data, output_data_length)
+            output_data = await KDF.derive(key, input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length
@@ -141,5 +149,5 @@ def test_kdf_separate_hmacs() -> None:
 
             # Assert determinism
             for _ in range(25):
-                output_data_repeated = KDF.derive(key, input_data, output_data_length)
+                output_data_repeated = await KDF.derive(key, input_data, output_data_length)
                 assert output_data_repeated == output_data

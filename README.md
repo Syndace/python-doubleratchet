@@ -20,7 +20,7 @@ This library implements the core of the Double Ratchet specification and include
 python-doubleratchet uses [pytest](https://docs.pytest.org/en/latest/) as its testing framework, [mypy](http://mypy-lang.org/) for static type checks and both [pylint](https://pylint.pycqa.org/en/latest/) and [Flake8](https://flake8.pycqa.org/en/latest/) for linting. All tests/checks can be run locally with the following commands:
 
 ```sh
-$ pip install --upgrade pytest mypy pylint flake8
+$ pip install --upgrade pytest pytest-asyncio mypy pylint flake8
 $ mypy --strict doubleratchet/ setup.py examples/ tests/
 $ pylint doubleratchet/ setup.py examples/ tests/
 $ flake8 doubleratchet/ setup.py examples/ tests/

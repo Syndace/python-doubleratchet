@@ -216,7 +216,7 @@ class SymmetricKeyRatchet:
 
         return None if self.__receiving_chain is None else self.__receiving_chain.length
 
-    def next_encryption_key(self) -> bytes:
+    async def next_encryption_key(self) -> bytes:
         """
         Returns:
             The next (32 bytes) encryption key derived from the sending chain.
@@ -230,9 +230,9 @@ class SymmetricKeyRatchet:
                 "The sending chain was never initialized, can not derive the next encryption key."
             )
 
-        return self.__sending_chain.step(self.__constant, 32)
+        return await self.__sending_chain.step(self.__constant, 32)
 
-    def next_decryption_key(self) -> bytes:
+    async def next_decryption_key(self) -> bytes:
         """
         Returns:
             The next (32 bytes) decryption key derived from the receiving chain.
@@ -246,4 +246,4 @@ class SymmetricKeyRatchet:
                 "The receiving chain was never initialized, can not derive the next decryption key."
             )
 
-        return self.__receiving_chain.step(self.__constant, 32)
+        return await self.__receiving_chain.step(self.__constant, 32)

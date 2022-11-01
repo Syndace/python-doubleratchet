@@ -106,7 +106,7 @@ class KDFChain:
 
         return cls.from_model(parse_kdf_chain_model(serialized), kdf)
 
-    def step(self, data: bytes, length: int) -> bytes:
+    async def step(self, data: bytes, length: int) -> bytes:
         """
         Perform a ratchet step of this KDF chain.
 
@@ -120,7 +120,7 @@ class KDFChain:
 
         key_length = len(self.__key)
 
-        output_data = self.__kdf.derive(self.__key, data, key_length + length)
+        output_data = await self.__kdf.derive(self.__key, data, key_length + length)
 
         self.__length += 1
         self.__key = output_data[:key_length]

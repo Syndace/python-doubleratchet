@@ -3,12 +3,12 @@ import random
 from typing import Optional, Set, Type
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
 
 from doubleratchet import AuthenticationFailedException, DecryptionFailedException
 from doubleratchet.recommended import aead_aes_hmac, HashFunction
+from doubleratchet.recommended.crypto_provider_cryptography import CryptoProviderImpl
 
 from .test_recommended_kdfs import generate_unique_random_data
 
@@ -16,6 +16,14 @@ from .test_recommended_kdfs import generate_unique_random_data
 __all__ = [  # pylint: disable=unused-variable
     "test_aead_aes_hmac"
 ]
+
+
+try:
+    import pytest
+except ImportError:
+    pass
+else:
+    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
 
 
 def flip_random_bit(data: bytes) -> bytes:
@@ -81,12 +89,12 @@ def make_aead(
             return info
 
         @classmethod
-        def encrypt(cls, plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
+        async def encrypt(cls, plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
             # A copy of aead_aes_hmac.AEAD's encrypt implementation, but with bit flips inserted at various
             # points.
-            encryption_key, authentication_key, iv = cls.__derive(
+            encryption_key, authentication_key, iv = await cls.__derive(
                 key,
-                hash_function.as_cryptography,
+                hash_function,
                 info
             )
 
@@ -118,15 +126,20 @@ def make_aead(
                 # Remove the last byte of the ciphertext
                 ciphertext = ciphertext[:-1]
 
-            auth = hmac.HMAC(authentication_key, hash_function.as_cryptography, backend=default_backend())
-            auth.update(associated_data)
-            auth.update(ciphertext)
-            return ciphertext + auth.finalize()
+            # Calculate the authentication tag
+            auth = await CryptoProviderImpl.hmac_calculate(
+                authentication_key,
+                hash_function,
+                associated_data + ciphertext
+            )
+
+            # Append the authentication tag to the ciphertext
+            return ciphertext + auth
 
     return AEAD
 
 
-def test_aead_aes_hmac() -> None:
+async def test_aead_aes_hmac() -> None:
     """
     Test the AES/HMAC-based AEAD recommended implementation.
     """
@@ -148,28 +161,28 @@ def test_aead_aes_hmac() -> None:
             UnmodifiedAEAD = make_aead(hash_function, info, None)
 
             # Test en-/decryption
-            ciphertext = UnmodifiedAEAD.encrypt(data, key, associated_data)
-            plaintext = UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
+            ciphertext = await UnmodifiedAEAD.encrypt(data, key, associated_data)
+            plaintext = await UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
             assert data == plaintext
 
             for _ in range(50):
                 # Flip a random bit in the ciphertext and test the reaction during decryption:
                 try:
-                    UnmodifiedAEAD.decrypt(flip_random_bit(ciphertext), key, associated_data)
+                    await UnmodifiedAEAD.decrypt(flip_random_bit(ciphertext), key, associated_data)
                     assert False
                 except AuthenticationFailedException:
                     pass
 
                 # Flip a random bit in the key and test the reaction during decryption:
                 try:
-                    UnmodifiedAEAD.decrypt(ciphertext, flip_random_bit(key), associated_data)
+                    await UnmodifiedAEAD.decrypt(ciphertext, flip_random_bit(key), associated_data)
                     assert False
                 except AuthenticationFailedException:
                     pass
 
                 # Flip a random bit in the associated data and test the reaction during decryption:
                 try:
-                    UnmodifiedAEAD.decrypt(ciphertext, key, flip_random_bit(associated_data))
+                    await UnmodifiedAEAD.decrypt(ciphertext, key, flip_random_bit(associated_data))
                     assert False
                 except AuthenticationFailedException:
                     pass
@@ -184,39 +197,39 @@ def test_aead_aes_hmac() -> None:
             EvilPaddingAEAD = make_aead(hash_function, info, EvilEncryptModification.PADDING)
             EvilCiphertextAEAD = make_aead(hash_function, info, EvilEncryptModification.CIPHERTEXT)
 
-            ciphertext = EvilEncryptionKeyAEAD.encrypt(data, key, associated_data)
+            ciphertext = await EvilEncryptionKeyAEAD.encrypt(data, key, associated_data)
             # Due to the modified key, a different plaintext than the original should be decrypted. This
             # causes either an error in the unpadding or succeeds but produces wrong plaintext:
             try:
-                plaintext = UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
+                plaintext = await UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
                 # Either the produced plaintext is wrong...
                 assert plaintext != data
             except DecryptionFailedException as e:
                 # ...or the unpadding fails.
                 assert "padded incorrectly" in str(e)
 
-            ciphertext = EvilIVAEAD.encrypt(data, key, associated_data)
+            ciphertext = await EvilIVAEAD.encrypt(data, key, associated_data)
             # The modified IV only influences the first block of the plaintext, thus a modified IV
             # might neither cause a decryption error nor an unpadding error. Instead, it will likely
             # succeed but produce a slightly wrong plaintext:
             try:
-                plaintext = UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
+                plaintext = await UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
                 # Either the produced plaintext is wrong...
                 assert plaintext != data
             except DecryptionFailedException as e:
                 # ...or the unpadding fails.
                 assert "padded incorrectly" in str(e)
 
-            ciphertext = EvilPaddingAEAD.encrypt(data, key, associated_data)
+            ciphertext = await EvilPaddingAEAD.encrypt(data, key, associated_data)
             try:
-                UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
+                await UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
                 assert False
             except DecryptionFailedException as e:
                 assert "padded incorrectly" in str(e)
 
-            ciphertext = EvilCiphertextAEAD.encrypt(data, key, associated_data)
+            ciphertext = await EvilCiphertextAEAD.encrypt(data, key, associated_data)
             try:
-                UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
+                await UnmodifiedAEAD.decrypt(ciphertext, key, associated_data)
                 assert False
             except DecryptionFailedException as e:
                 assert "decryption failed" in str(e).lower()

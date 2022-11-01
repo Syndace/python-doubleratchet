@@ -12,6 +12,14 @@ __all__ = [  # pylint: disable=unused-variable
 ]
 
 
+try:
+    import pytest
+except ImportError:
+    pass
+else:
+    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+
+
 class KDF(kdf_hkdf.KDF):
     """
     The KDF to use for testing.
@@ -26,7 +34,7 @@ class KDF(kdf_hkdf.KDF):
         return "test_kdf_chain info".encode("ASCII")
 
 
-def test_kdf_chain() -> None:
+async def test_kdf_chain() -> None:
     """
     Test the KDF chain implementation.
     """
@@ -43,7 +51,7 @@ def test_kdf_chain() -> None:
 
             output_data_length = random.randrange(2, 2 ** 16)
 
-            digest_size = HashFunction.SHA_512.as_cryptography.digest_size
+            digest_size = HashFunction.SHA_512.hash_size
             if len(initial_key) + output_data_length <= 255 * digest_size:
                 break
 
@@ -52,7 +60,7 @@ def test_kdf_chain() -> None:
 
         # Perform 100 derivation steps
         for step_counter in range(100):
-            output_data = kdf_chain.step(input_data, output_data_length)
+            output_data = await kdf_chain.step(input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length
@@ -71,7 +79,7 @@ def test_kdf_chain() -> None:
 
         # Repeat the 100 derivation steps
         for step_counter in range(100):
-            output_data = kdf_chain.step(input_data, output_data_length)
+            output_data = await kdf_chain.step(input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length
@@ -90,7 +98,7 @@ def test_kdf_chain() -> None:
 
         # Repeat only the first 50 derivation steps
         for step_counter in range(50):
-            output_data = kdf_chain.step(input_data, output_data_length)
+            output_data = await kdf_chain.step(input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length
@@ -105,7 +113,7 @@ def test_kdf_chain() -> None:
 
         # Perform the remaining 50 derivation steps
         for step_counter in range(50):
-            output_data = kdf_chain.step(input_data, output_data_length)
+            output_data = await kdf_chain.step(input_data, output_data_length)
 
             # Assert correct length and uniqueness of the result
             assert len(output_data) == output_data_length

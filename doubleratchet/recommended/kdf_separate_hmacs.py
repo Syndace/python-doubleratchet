@@ -1,9 +1,7 @@
 from abc import abstractmethod
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hmac
-
-from .hash_function import HashFunction
+from .crypto_provider import HashFunction
+from .crypto_provider_cryptography import CryptoProviderImpl
 from .. import kdf
 
 
@@ -31,10 +29,10 @@ class KDF(kdf.KDF):
         raise NotImplementedError("Create a subclass and override `_get_hash_function`.")
 
     @classmethod
-    def derive(cls, key: bytes, data: bytes, length: int) -> bytes:
-        hash_function = cls._get_hash_function().as_cryptography
+    async def derive(cls, key: bytes, data: bytes, length: int) -> bytes:
+        hash_function = cls._get_hash_function()
 
-        if length != len(data) * hash_function.digest_size:
+        if length != len(data) * hash_function.hash_size:
             raise ValueError(
                 "This HMAC-based KDF implementation can only derive keys that are n times as big as the byte"
                 " size of the hash function digest, where n is the number of bytes in the KDF data."
@@ -43,8 +41,6 @@ class KDF(kdf.KDF):
         result = b""
 
         for i in range(len(data)):
-            part = hmac.HMAC(key, hash_function, backend=default_backend())
-            part.update(data[i:i + 1])
-            result += part.finalize()
+            result += await CryptoProviderImpl.hmac_calculate(key, hash_function, data[i:i + 1])
 
         return result

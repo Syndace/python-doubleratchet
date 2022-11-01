@@ -13,6 +13,8 @@ class DiffieHellmanRatchet(diffie_hellman_ratchet.DiffieHellmanRatchet):
     """
     An implementation of :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet` using Curve25519
     keys and performing X25519 key exchanges.
+
+    Implementation relies on the Python package `cryptography <https://github.com/pyca/cryptography>`_.
     """
 
     @staticmethod

@@ -18,7 +18,7 @@ class KDF(ABC):
 
     @staticmethod
     @abstractmethod
-    def derive(key: bytes, data: bytes, length: int) -> bytes:
+    async def derive(key: bytes, data: bytes, length: int) -> bytes:
         """
         Args:
             key: The KDF key.

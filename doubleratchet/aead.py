@@ -27,7 +27,7 @@ class AEAD(ABC):
 
     @staticmethod
     @abstractmethod
-    def encrypt(plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
+    async def encrypt(plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
         """
         Args:
             plaintext: The plaintext to encrypt.
@@ -42,7 +42,7 @@ class AEAD(ABC):
 
     @staticmethod
     @abstractmethod
-    def decrypt(ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
+    async def decrypt(ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
         """
         Args:
             ciphertext: The ciphertext to decrypt.

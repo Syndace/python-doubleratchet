@@ -64,7 +64,7 @@ class DiffieHellmanRatchet(ABC):
         self.__symmetric_key_ratchet: SymmetricKeyRatchet
 
     @classmethod
-    def create(
+    async def create(
         cls: Type[DiffieHellmanRatchetTypeT],
         own_ratchet_priv: Optional[bytes],
         other_ratchet_pub: bytes,
@@ -104,13 +104,13 @@ class DiffieHellmanRatchet(ABC):
         if own_ratchet_priv is None:
             self.__own_ratchet_priv = self._generate_priv()
             self.__other_ratchet_pub = other_ratchet_pub
-            self.__replace_chain(Chain.SENDING)
+            await self.__replace_chain(Chain.SENDING)
         else:
             self.__own_ratchet_priv = own_ratchet_priv
             self.__other_ratchet_pub = other_ratchet_pub
-            self.__replace_chain(Chain.RECEIVING)
+            await self.__replace_chain(Chain.RECEIVING)
             self.__own_ratchet_priv = self._generate_priv()
-            self.__replace_chain(Chain.SENDING)
+            await self.__replace_chain(Chain.SENDING)
 
         return self
 
@@ -322,7 +322,7 @@ class DiffieHellmanRatchet(ABC):
     # ratchet management #
     ######################
 
-    def __replace_chain(self, chain: Chain) -> None:
+    async def __replace_chain(self, chain: Chain) -> None:
         """
         Replace one of the chains of the internal symmetric-key ratchet. The chain key is derived by feeding
         the Diffie-Hellman shared secret to the root chain.
@@ -331,12 +331,12 @@ class DiffieHellmanRatchet(ABC):
             chain: The chain to replace.
         """
 
-        self.__symmetric_key_ratchet.replace_chain(chain, self.__root_chain.step(self._perform_diffie_hellman(
-            self.__own_ratchet_priv,
-            self.__other_ratchet_pub
-        ), 32))
+        self.__symmetric_key_ratchet.replace_chain(chain, await self.__root_chain.step(
+            self._perform_diffie_hellman(self.__own_ratchet_priv, self.__other_ratchet_pub),
+            32
+        ))
 
-    def next_encryption_key(self) -> Tuple[bytes, Header]:
+    async def next_encryption_key(self) -> Tuple[bytes, Header]:
         """
         Returns:
             The next (32 bytes) encryption key derived from the sending chain and the corresponding
@@ -354,11 +354,11 @@ class DiffieHellmanRatchet(ABC):
             sending_chain_length=sending_chain_length
         )
 
-        next_encryption_key = self.__symmetric_key_ratchet.next_encryption_key()
+        next_encryption_key = await self.__symmetric_key_ratchet.next_encryption_key()
 
         return next_encryption_key, header
 
-    def next_decryption_key(self, header: Header) -> Tuple[bytes, SkippedMessageKeys]:
+    async def next_decryption_key(self, header: Header) -> Tuple[bytes, SkippedMessageKeys]:
         """
         Args:
             header: The Diffie-Hellman ratchet header,
@@ -394,14 +394,14 @@ class DiffieHellmanRatchet(ABC):
                     # Calculate the skipped message keys
                     for _ in range(num_skipped_keys):
                         skipped_message_keys[(self.__other_ratchet_pub, receiving_chain_length)] = \
-                            self.__symmetric_key_ratchet.next_decryption_key()
+                            await self.__symmetric_key_ratchet.next_decryption_key()
                         receiving_chain_length += 1
 
             # Perform one full ratchet step, by replacing both the receiving and the sending chains
             self.__other_ratchet_pub = header.ratchet_pub
-            self.__replace_chain(Chain.RECEIVING)
+            await self.__replace_chain(Chain.RECEIVING)
             self.__own_ratchet_priv = self._generate_priv()
-            self.__replace_chain(Chain.SENDING)
+            await self.__replace_chain(Chain.SENDING)
 
         # Once the chains are prepared, forward the receiving chain to the required key
         receiving_chain_length = self.__symmetric_key_ratchet.receiving_chain_length
@@ -418,7 +418,7 @@ class DiffieHellmanRatchet(ABC):
         # Calculate the skipped message keys and keep the receiving chain length updated
         for _ in range(num_skipped_keys):
             skipped_message_keys[(self.__other_ratchet_pub, receiving_chain_length)] = \
-                self.__symmetric_key_ratchet.next_decryption_key()
+                await self.__symmetric_key_ratchet.next_decryption_key()
             receiving_chain_length += 1
 
         # Check whether a message key is requested that was derived before
@@ -428,6 +428,6 @@ class DiffieHellmanRatchet(ABC):
             )
 
         # Finally, derive the requested message key and return it with the skipped message keys
-        next_decryption_key = self.__symmetric_key_ratchet.next_decryption_key()
+        next_decryption_key = await self.__symmetric_key_ratchet.next_decryption_key()
 
         return next_decryption_key, skipped_message_keys

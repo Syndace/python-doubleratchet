@@ -1,14 +1,8 @@
 from abc import abstractmethod
 from typing import Tuple
 
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.padding import PKCS7
-
-from .hash_function import HashFunction
+from .crypto_provider import HashFunction
+from .crypto_provider_cryptography import CryptoProviderImpl
 from .. import aead
 
 
@@ -47,86 +41,62 @@ class AEAD(aead.AEAD):
         raise NotImplementedError("Create a subclass and override `_get_info`.")
 
     @classmethod
-    def encrypt(cls, plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
-        hash_function = cls._get_hash_function().as_cryptography
+    async def encrypt(cls, plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
+        hash_function = cls._get_hash_function()
 
-        encryption_key, authentication_key, iv = cls.__derive(key, hash_function, cls._get_info())
-
-        # Prepare PKCS#7 padded plaintext
-        padder = PKCS7(128).padder()
-        padded_plaintext = padder.update(plaintext) + padder.finalize()
+        encryption_key, authentication_key, iv = await cls.__derive(key, hash_function, cls._get_info())
 
         # Encrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
-        # previously created key and IV
-        aes = Cipher(
-            algorithms.AES(encryption_key),
-            modes.CBC(iv),
-            backend=default_backend()
-        ).encryptor()
-        ciphertext = aes.update(padded_plaintext) + aes.finalize()  # pylint: disable=no-member
+        # previously created key and IV, after padding it with PKCS#7
+        ciphertext = await CryptoProviderImpl.aes_cbc_encrypt(encryption_key, iv, plaintext)
 
         # Calculate the authentication tag
-        auth = hmac.HMAC(authentication_key, hash_function, backend=default_backend())
-        auth.update(associated_data)
-        auth.update(ciphertext)
+        auth = await CryptoProviderImpl.hmac_calculate(
+            authentication_key,
+            hash_function,
+            associated_data + ciphertext
+        )
 
         # Append the authentication tag to the ciphertext
-        return ciphertext + auth.finalize()
+        return ciphertext + auth
 
     @classmethod
-    def decrypt(cls, ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
-        hash_function = cls._get_hash_function().as_cryptography
+    async def decrypt(cls, ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
+        hash_function = cls._get_hash_function()
 
-        decryption_key, authentication_key, iv = cls.__derive(key, hash_function, cls._get_info())
+        decryption_key, authentication_key, iv = await cls.__derive(key, hash_function, cls._get_info())
 
         # Split the authentication tag from the ciphertext
-        auth = ciphertext[-hash_function.digest_size:]
-        ciphertext = ciphertext[:-hash_function.digest_size]
+        auth = ciphertext[-hash_function.hash_size:]
+        ciphertext = ciphertext[:-hash_function.hash_size]
 
         # Calculate and verify the authentication tag
-        new_auth = hmac.HMAC(authentication_key, hash_function, backend=default_backend())
-        new_auth.update(associated_data)
-        new_auth.update(ciphertext)
+        new_auth = await CryptoProviderImpl.hmac_calculate(
+            authentication_key,
+            hash_function,
+            associated_data + ciphertext
+        )
 
-        try:
-            new_auth.verify(auth)
-        except InvalidSignature as e:
-            raise aead.AuthenticationFailedException() from e
+        if new_auth != auth:
+            raise aead.AuthenticationFailedException("Authentication tags do not match.")
 
         # Decrypt the plaintext using AES-256 (the 256 bit are implied by the key size) in CBC mode and the
-        # previously created key and IV
-        try:
-            aes = Cipher(
-                algorithms.AES(decryption_key),
-                modes.CBC(iv),
-                backend=default_backend()
-            ).decryptor()
-            padded_plaintext = aes.update(ciphertext) + aes.finalize()  # pylint: disable=no-member
-        except ValueError as e:
-            raise aead.DecryptionFailedException("Decryption failed.") from e
-
-        # Remove the PKCS#7 padding from the plaintext
-        try:
-            unpadder = PKCS7(128).unpadder()
-            plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
-        except ValueError as e:
-            raise aead.DecryptionFailedException("Plaintext padded incorrectly.") from e
-
-        return plaintext
+        # previously created key and IV, and unpad the resulting plaintext with PKCS#7
+        return await CryptoProviderImpl.aes_cbc_decrypt(decryption_key, iv, ciphertext)
 
     @staticmethod
-    def __derive(key: bytes, hash_function: hashes.HashAlgorithm, info: bytes) -> Tuple[bytes, bytes, bytes]:
+    async def __derive(key: bytes, hash_function: HashFunction, info: bytes) -> Tuple[bytes, bytes, bytes]:
         # Prepare the salt, a zero-filled byte sequence with the size of the hash digest
-        salt = b"\x00" * hash_function.digest_size
+        salt = b"\x00" * hash_function.hash_size
 
         # Derive 80 bytes
-        hkdf_out = HKDF(
-            algorithm=hash_function,
+        hkdf_out = await CryptoProviderImpl.hkdf_derive(
+            hash_function=hash_function,
             length=80,
             salt=salt,
             info=info,
-            backend=default_backend()
-        ).derive(key)
+            key_material=key
+        )
 
         # Split these 80 bytes into three parts
         return hkdf_out[:32], hkdf_out[32:64], hkdf_out[64:]

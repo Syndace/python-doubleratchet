@@ -45,7 +45,7 @@ class DoubleRatchet(ABC):
         self.__diffie_hellman_ratchet: DiffieHellmanRatchet
 
     @classmethod
-    def encrypt_initial_message(
+    async def encrypt_initial_message(
         cls: Type[DoubleRatchetTypeT],
         diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
         root_chain_kdf: Type[KDF],
@@ -96,7 +96,7 @@ class DoubleRatchet(ABC):
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
         self.__skipped_message_keys = OrderedDict()
         self.__aead = aead
-        self.__diffie_hellman_ratchet = diffie_hellman_ratchet_class.create(
+        self.__diffie_hellman_ratchet = await diffie_hellman_ratchet_class.create(
             None,
             recipient_ratchet_pub,
             root_chain_kdf,
@@ -106,8 +106,8 @@ class DoubleRatchet(ABC):
             dos_protection_threshold
         )
 
-        message_key, header = self.__diffie_hellman_ratchet.next_encryption_key()
-        ciphertext = self.__aead.encrypt(
+        message_key, header = await self.__diffie_hellman_ratchet.next_encryption_key()
+        ciphertext = await self.__aead.encrypt(
             message,
             message_key,
             self._build_associated_data(associated_data, header)
@@ -116,7 +116,7 @@ class DoubleRatchet(ABC):
         return (self, EncryptedMessage(header=header, ciphertext=ciphertext))
 
     @classmethod
-    def decrypt_initial_message(
+    async def decrypt_initial_message(
         cls: Type[DoubleRatchetTypeT],
         diffie_hellman_ratchet_class: Type[DiffieHellmanRatchet],
         root_chain_kdf: Type[KDF],
@@ -172,7 +172,7 @@ class DoubleRatchet(ABC):
         self = cls()
         self.__max_num_skipped_message_keys = max_num_skipped_message_keys
         self.__aead = aead
-        self.__diffie_hellman_ratchet = diffie_hellman_ratchet_class.create(
+        self.__diffie_hellman_ratchet = await diffie_hellman_ratchet_class.create(
             own_ratchet_priv,
             message.header.ratchet_pub,
             root_chain_kdf,
@@ -182,13 +182,14 @@ class DoubleRatchet(ABC):
             dos_protection_threshold
         )
 
-        message_key, skipped_message_keys = self.__diffie_hellman_ratchet.next_decryption_key(message.header)
+        message_key, skipped_message_keys = \
+            await self.__diffie_hellman_ratchet.next_decryption_key(message.header)
 
         # Even the first message might have skipped message keys. The number of keys can't cross thresholds,
         # thus no FIFO discarding required.
         self.__skipped_message_keys = skipped_message_keys
 
-        return (self, self.__aead.decrypt(
+        return (self, await self.__aead.decrypt(
             message.ciphertext,
             message_key,
             self._build_associated_data(associated_data, message.header)
@@ -389,7 +390,7 @@ class DoubleRatchet(ABC):
     # message en/decryption #
     #########################
 
-    def encrypt_message(self, message: bytes, associated_data: bytes) -> EncryptedMessage:
+    async def encrypt_message(self, message: bytes, associated_data: bytes) -> EncryptedMessage:
         """
         Args:
             message: The message to encrypt.
@@ -399,8 +400,8 @@ class DoubleRatchet(ABC):
             The encrypted message including the header to send to the recipient.
         """
 
-        message_key, header = self.__diffie_hellman_ratchet.next_encryption_key()
-        ciphertext = self.__aead.encrypt(
+        message_key, header = await self.__diffie_hellman_ratchet.next_encryption_key()
+        ciphertext = await self.__aead.encrypt(
             message,
             message_key,
             self._build_associated_data(associated_data, header)
@@ -408,7 +409,7 @@ class DoubleRatchet(ABC):
 
         return EncryptedMessage(header=header, ciphertext=ciphertext)
 
-    def decrypt_message(self, message: EncryptedMessage, associated_data: bytes) -> bytes:
+    async def decrypt_message(self, message: EncryptedMessage, associated_data: bytes) -> bytes:
         """
         Args:
             message: The encrypted message.
@@ -440,11 +441,12 @@ class DoubleRatchet(ABC):
         try:
             message_key = self.__skipped_message_keys[skipped_message_key_key]
         except KeyError:
-            message_key, skipped_message_keys = diffie_hellman_ratchet.next_decryption_key(message.header)
+            message_key, skipped_message_keys = \
+                await diffie_hellman_ratchet.next_decryption_key(message.header)
 
         # Decrypt the message (or at least attempt to do so). At this point, the internal state of this
         # instance remains untouched.
-        plaintext = self.__aead.decrypt(
+        plaintext = await self.__aead.decrypt(
             message.ciphertext,
             message_key,
             self._build_associated_data(associated_data, message.header)

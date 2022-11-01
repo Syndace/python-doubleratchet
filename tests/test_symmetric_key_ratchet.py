@@ -15,6 +15,14 @@ __all__ = [  # pylint: disable=unused-variable
 ]
 
 
+try:
+    import pytest
+except ImportError:
+    pass
+else:
+    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+
+
 class KDF(kdf_hkdf.KDF):
     """
     The KDF to use for testing.
@@ -29,7 +37,7 @@ class KDF(kdf_hkdf.KDF):
         return "test_symmetric_key_ratchet info".encode("ASCII")
 
 
-def test_symmetric_key_ratchet() -> None:
+async def test_symmetric_key_ratchet() -> None:
     """
     Test the symmetric-key ratchet implementation.
     """
@@ -62,20 +70,20 @@ def test_symmetric_key_ratchet() -> None:
         assert skr_b.receiving_chain_length == 0
 
         try:
-            skr_a.next_decryption_key()
+            await skr_a.next_decryption_key()
             assert False
         except ChainNotAvailableException as e:
             assert "receiving chain" in str(e)
             assert "never initialized" in str(e)
 
         try:
-            skr_b.next_encryption_key()
+            await skr_b.next_encryption_key()
             assert False
         except ChainNotAvailableException as e:
             assert "sending chain" in str(e)
             assert "never initialized" in str(e)
 
-        assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
+        assert await skr_a.next_encryption_key() == await skr_b.next_decryption_key()
 
         assert skr_a.sending_chain_length == 1
         assert skr_b.receiving_chain_length == 1
@@ -88,10 +96,10 @@ def test_symmetric_key_ratchet() -> None:
         skr_a.replace_chain(Chain.RECEIVING, key)
         skr_b.replace_chain(Chain.SENDING, key)
 
-        assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
-        assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
+        assert await skr_a.next_encryption_key() == await skr_b.next_decryption_key()
+        assert await skr_a.next_encryption_key() == await skr_b.next_decryption_key()
 
-        assert skr_b.next_encryption_key() == skr_a.next_decryption_key()
+        assert await skr_b.next_encryption_key() == await skr_a.next_decryption_key()
 
         assert skr_a.previous_sending_chain_length == 1
         assert skr_b.previous_sending_chain_length is None
@@ -100,8 +108,8 @@ def test_symmetric_key_ratchet() -> None:
         assert skr_a.receiving_chain_length == 1
         assert skr_b.receiving_chain_length == 2
 
-        assert len(skr_a.next_encryption_key()) == 32
-        skr_b.next_decryption_key()
+        assert len(await skr_a.next_encryption_key()) == 32
+        await skr_b.next_decryption_key()
 
         try:
             skr_a.replace_chain(Chain.SENDING, b"\x00" * 64)
@@ -110,4 +118,4 @@ def test_symmetric_key_ratchet() -> None:
             assert "chain key" in str(e)
             assert "32 bytes" in str(e)
 
-        assert skr_a.next_encryption_key() == skr_b.next_decryption_key()
+        assert await skr_a.next_encryption_key() == await skr_b.next_decryption_key()
