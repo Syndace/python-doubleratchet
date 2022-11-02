@@ -1,7 +1,7 @@
 [![PyPI](https://img.shields.io/pypi/v/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
-[![Build Status](https://travis-ci.org/Syndace/python-doubleratchet.svg?branch=stable)](https://travis-ci.org/Syndace/python-doubleratchet)
-[![Documentation Status](https://readthedocs.org/projects/python-doubleratchet/badge/?version=latest)](https://python-doubleratchet.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-on-push.yml/badge.svg)](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-on-push.yml)
+[![Documentation Status](https://readthedocs.org/projects/python-doubleratchet/badge/?version=latest)](https://python-doubleratchet.readthedocs.io/)
 
 # python-doubleratchet #
 
@@ -30,7 +30,3 @@ $ pytest --cov=doubleratchet --cov-report term-missing:skip-covered
 ## Documentation ##
 
 View the documentation on [readthedocs.io](https://python-doubleratchet.readthedocs.io/) or build it locally, which requires the Python packages listed in `docs/requirements.txt`. With all dependencies installed, run `make html` in the `docs/` directory. You can find the generated documentation in `docs/_build/html/`.
-
-## Travis CI ##
-
-The project used to be built using Travis CI, which was amazing. Sadly, Travis fully closed their open-source support. I have yet to migrate somewhere else, until then the project will not be automatically tested.
