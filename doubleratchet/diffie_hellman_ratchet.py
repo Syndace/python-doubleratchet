@@ -152,8 +152,6 @@ class DiffieHellmanRatchet(ABC):
             (https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms).
         """
 
-        raise NotImplementedError("Create a subclass of DiffieHellmanRatchet and implement `_generate_priv`.")
-
     @staticmethod
     @abstractmethod
     def _derive_pub(priv: bytes) -> bytes:
@@ -166,8 +164,6 @@ class DiffieHellmanRatchet(ABC):
         Returns:
             The public key corresponding to the private key.
         """
-
-        raise NotImplementedError("Create a subclass of DiffieHellmanRatchet and implement `_derive_pub`.")
 
     @staticmethod
     @abstractmethod
@@ -182,10 +178,6 @@ class DiffieHellmanRatchet(ABC):
             X448. There is no need to check for invalid public keys
             (https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms).
         """
-
-        raise NotImplementedError(
-            "Create a subclass of DiffieHellmanRatchet and implement `_perform_diffie_hellman`."
-        )
 
     #################
     # serialization #

@@ -28,5 +28,3 @@ class KDF(ABC):
         Returns:
             ``length`` bytes of output data, derived from the KDF key and the input data.
         """
-
-        raise NotImplementedError("Create a subclass of KDF and implement `derive`.")

@@ -26,7 +26,7 @@ class KDF(kdf.KDF):
     @staticmethod
     @abstractmethod
     def _get_hash_function() -> HashFunction:
-        raise NotImplementedError("Create a subclass and override `_get_hash_function`.")
+        pass
 
     @classmethod
     async def derive(cls, key: bytes, data: bytes, length: int) -> bytes:

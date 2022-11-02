@@ -38,8 +38,6 @@ class AEAD(ABC):
             The ciphertext.
         """
 
-        raise NotImplementedError("Create a subclass of AEAD and implement `encrypt`.")
-
     @staticmethod
     @abstractmethod
     async def decrypt(ciphertext: bytes, key: bytes, associated_data: bytes) -> bytes:
@@ -57,5 +55,3 @@ class AEAD(ABC):
                 data.
             DecryptionFailedException: if the decryption failed for a different reason (e.g. invalid padding).
         """
-
-        raise NotImplementedError("Create a subclass of AEAD and implement `decrypt`.")

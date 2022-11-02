@@ -233,10 +233,6 @@ class DoubleRatchet(ABC):
             A byte sequence encoding the associated data and the header in a unique, reversible way.
         """
 
-        raise NotImplementedError(
-            "Create a subclass of DoubleRatchet and implement `_build_associated_data`."
-        )
-
     #################
     # serialization #
     #################

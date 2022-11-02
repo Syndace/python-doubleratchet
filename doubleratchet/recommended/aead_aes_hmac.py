@@ -33,12 +33,12 @@ class AEAD(aead.AEAD):
     @staticmethod
     @abstractmethod
     def _get_hash_function() -> HashFunction:
-        raise NotImplementedError("Create a subclass and override `_get_hash_function`.")
+        pass
 
     @staticmethod
     @abstractmethod
     def _get_info() -> bytes:
-        raise NotImplementedError("Create a subclass and override `_get_info`.")
+        pass
 
     @classmethod
     async def encrypt(cls, plaintext: bytes, key: bytes, associated_data: bytes) -> bytes:
