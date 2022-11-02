@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "pypy-3.9"]
 
@@ -25,7 +26,7 @@ jobs:
     - name: Install runtime dependencies
       run: pip install -r requirements.txt
     - name: Install test dependencies
-      run: pip install --upgrade pytest pytest-asyncio mypy pylint flake8
+      run: pip install --upgrade pytest pytest-asyncio pytest-cov mypy pylint flake8
 
     - name: Type-check using mypy
       run: mypy --strict doubleratchet/ setup.py examples/ tests/
@@ -34,4 +35,4 @@ jobs:
     - name: Format-check using flake8
       run: flake8 doubleratchet/ setup.py examples/ tests/
     - name: Test using pytest
-      run: pytest
+      run: pytest --cov=doubleratchet --cov-report term-missing:skip-covered
