@@ -33,7 +33,7 @@ jobs:
       run: mypy --strict doubleratchet/ setup.py examples/ tests/
     - name: Lint using pylint
       run: pylint doubleratchet/ setup.py examples/ tests/
-    - name: Format-check using flake8
+    - name: Format-check using Flake8
       run: flake8 doubleratchet/ setup.py examples/ tests/
     - name: Test using pytest
       run: pytest --cov=doubleratchet --cov-report term-missing:skip-covered
