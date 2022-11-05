@@ -114,7 +114,8 @@ def parse_diffie_hellman_ratchet_model(serialized: JSONObject) -> DiffieHellmanR
     # serialized from.
     version = cast(str, serialized["version"])
     model: BaseModel = {
-        DiffieHellmanRatchetModel.construct().version: DiffieHellmanRatchetModel
+        "1.0.0": DiffieHellmanRatchetModel,
+        "1.0.1": DiffieHellmanRatchetModel
     }[version](**serialized)
 
     # Once all migrations have been applied, the model should be an instance of the most recent model
@@ -155,7 +156,8 @@ def parse_double_ratchet_model(serialized: JSONObject) -> DoubleRatchetModel:
     version = cast(str, serialized["version"]) if "version" in serialized else None
     model: BaseModel = {
         None: PreStableModel,
-        DoubleRatchetModel.construct().version: DoubleRatchetModel
+        "1.0.0": DoubleRatchetModel,
+        "1.0.1": DoubleRatchetModel
     }[version](**serialized)
 
     if isinstance(model, PreStableModel):
@@ -229,7 +231,8 @@ def parse_kdf_chain_model(serialized: JSONObject) -> KDFChainModel:
     # serialized from.
     version = cast(str, serialized["version"])
     model: BaseModel = {
-        KDFChainModel.construct().version: KDFChainModel
+        "1.0.0": KDFChainModel,
+        "1.0.1": KDFChainModel
     }[version](**serialized)
 
     # Once all migrations have been applied, the model should be an instance of the most recent model
@@ -259,7 +262,8 @@ def parse_symmetric_key_ratchet_model(serialized: JSONObject) -> SymmetricKeyRat
     # serialized from.
     version = cast(str, serialized["version"])
     model: BaseModel = {
-        SymmetricKeyRatchetModel.construct().version: SymmetricKeyRatchetModel
+        "1.0.0": SymmetricKeyRatchetModel,
+        "1.0.1": SymmetricKeyRatchetModel
     }[version](**serialized)
 
     # Once all migrations have been applied, the model should be an instance of the most recent model

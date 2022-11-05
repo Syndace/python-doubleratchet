@@ -2,8 +2,6 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, validator
 
-from .version import __version__
-
 
 __all__ = [  # pylint: disable=unused-variable
     "DiffieHellmanRatchetModel",
@@ -56,7 +54,7 @@ class KDFChainModel(BaseModel):
     The model representing the internal state of a :class:`~doubleratchet.kdf_chain.KDFChain`.
     """
 
-    version: str = __version__["short"]
+    version: str = "1.0.0"
     length: int
     key: bytes
 
@@ -73,7 +71,7 @@ class SymmetricKeyRatchetModel(BaseModel):
     :class:`~doubleratchet.symmetric_key_ratchet.SymmetricKeyRatchet`.
     """
 
-    version: str = __version__["short"]
+    version: str = "1.0.0"
     receiving_chain: Optional[KDFChainModel]
     sending_chain: Optional[KDFChainModel]
     previous_sending_chain_length: Optional[int]
@@ -85,7 +83,7 @@ class DiffieHellmanRatchetModel(BaseModel):
     :class:`~doubleratchet.diffie_hellman_ratchet.DiffieHellmanRatchet`.
     """
 
-    version: str = __version__["short"]
+    version: str = "1.0.0"
     own_ratchet_priv: bytes
     other_ratchet_pub: bytes
     root_chain: KDFChainModel
@@ -121,7 +119,7 @@ class DoubleRatchetModel(BaseModel):
     The model representing the internal state of a :class:`~doubleratchet.double_ratchet.DoubleRatchet`.
     """
 
-    version: str = __version__["short"]
+    version: str = "1.0.0"
     diffie_hellman_ratchet: DiffieHellmanRatchetModel
     skipped_message_keys: List[SkippedMessageKeyModel]
 
