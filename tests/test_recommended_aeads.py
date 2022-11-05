@@ -152,9 +152,9 @@ async def test_aead_aes_hmac() -> None:
 
         for _ in range(100):
             # Generate (unique) random parameters
-            key = generate_unique_random_data(0, 2 ** 16, key_set)
+            key = generate_unique_random_data(1, 2 ** 16, key_set)
             data = generate_unique_random_data(1, 2 ** 6, data_set)
-            associated_data = generate_unique_random_data(0, 2 ** 16, ad_set)
+            associated_data = generate_unique_random_data(1, 2 ** 16, ad_set)
             info = generate_unique_random_data(0, 2 ** 16, info_set)
 
             # Prepare the AEAD
