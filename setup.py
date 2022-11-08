@@ -56,7 +56,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests"]),
     install_requires=[
         "cryptography>=3.3.2",
         "pydantic>=1.7.4",
