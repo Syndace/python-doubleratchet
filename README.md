@@ -1,6 +1,6 @@
 [![PyPI](https://img.shields.io/pypi/v/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DoubleRatchet.svg)](https://pypi.org/project/DoubleRatchet/)
-[![Build Status](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-on-push.yml/badge.svg)](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-on-push.yml)
+[![Build Status](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-and-publish.yml/badge.svg)](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-and-publish.yml)
 [![Documentation Status](https://readthedocs.org/projects/python-doubleratchet/badge/?version=latest)](https://python-doubleratchet.readthedocs.io/)
 
 # python-doubleratchet #
@@ -9,7 +9,7 @@ A Python implementation of the [Double Ratchet algorithm](https://signal.org/doc
 
 ## Installation ##
 
-Install the latest release using pip (`pip install DoubleRatchet`) or manually from source by running `pip install .` (preferred) or `python setup.py install` in the cloned repository.
+Install the latest release using pip (`pip install DoubleRatchet`) or manually from source by running `pip install .` in the cloned repository.
 
 ## Differences to the Specification ##
 
