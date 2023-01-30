@@ -13,7 +13,10 @@ Install the latest release using pip (`pip install DoubleRatchet`) or manually f
 
 ## Differences to the Specification ##
 
-This library implements the core of the Double Ratchet specification and includes a few of the recommended algorithms. This library does currently _not_ offer sophisticated decision mechanisms for the deletion of skipped message keys. Skipped message keys are only deleted when the maximum amount is reached and old keys are deleted from the storage in FIFO order. There is no time-based or event-based deletion.
+This library implements the core of the Double Ratchet specification and includes a few of the recommended algorithms.
+This library does _not_ currently offer sophisticated decision mechanisms for the deletion of skipped message keys.
+Skipped message keys are only deleted when the maximum amount is reached, and old keys are deleted from the storage in
+FIFO order. There is no time-based or event-based deletion.
 
 ## Testing, Type Checks and Linting ##
 
