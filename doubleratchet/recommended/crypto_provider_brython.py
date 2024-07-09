@@ -1,4 +1,4 @@
-from browser import window  # type: ignore[import]  # pylint: disable=import-error
+from browser import window  # type: ignore[import-not-found]  # pylint: disable=import-error
 from typing_extensions import assert_never
 
 from .crypto_provider import CryptoProvider, HashFunction
