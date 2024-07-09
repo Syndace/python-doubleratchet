@@ -1,6 +1,9 @@
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
+from pydantic.functional_serializers import PlainSerializer
+from pydantic.functional_validators import PlainValidator
+from typing_extensions import Annotated
 
 
 __all__ = [  # pylint: disable=unused-variable
@@ -49,6 +52,9 @@ def _json_bytes_encoder(val: bytes) -> str:
     return "".join(map(chr, val))
 
 
+JsonBytes = Annotated[bytes, PlainValidator(_json_bytes_decoder), PlainSerializer(_json_bytes_encoder)]
+
+
 class KDFChainModel(BaseModel):
     """
     The model representing the internal state of a :class:`~doubleratchet.kdf_chain.KDFChain`.
@@ -56,13 +62,7 @@ class KDFChainModel(BaseModel):
 
     version: str = "1.0.0"
     length: int
-    key: bytes
-
-    # Workaround for correct serialization of bytes, see :func:`bytes_decoder` above for details.
-    class Config:  # pylint: disable=missing-class-docstring
-        json_encoders = { bytes: _json_bytes_encoder }
-
-    _decoders = validator("key", pre=True, allow_reuse=True)(_json_bytes_decoder)
+    key: JsonBytes
 
 
 class SymmetricKeyRatchetModel(BaseModel):
@@ -84,17 +84,10 @@ class DiffieHellmanRatchetModel(BaseModel):
     """
 
     version: str = "1.0.0"
-    own_ratchet_priv: bytes
-    other_ratchet_pub: bytes
+    own_ratchet_priv: JsonBytes
+    other_ratchet_pub: JsonBytes
     root_chain: KDFChainModel
     symmetric_key_ratchet: SymmetricKeyRatchetModel
-
-    # Workaround for correct serialization of bytes, see :func:`bytes_decoder` above for details.
-    class Config:  # pylint: disable=missing-class-docstring
-        json_encoders = { bytes: _json_bytes_encoder }
-
-    _decoders = \
-        validator("own_ratchet_priv", "other_ratchet_pub", pre=True, allow_reuse=True)(_json_bytes_decoder)
 
 
 class SkippedMessageKeyModel(BaseModel):
@@ -103,15 +96,9 @@ class SkippedMessageKeyModel(BaseModel):
     meta data.
     """
 
-    ratchet_pub: bytes
+    ratchet_pub: JsonBytes
     index: int
-    message_key: bytes
-
-    # Workaround for correct serialization of bytes, see :func:`bytes_decoder` above for details.
-    class Config:  # pylint: disable=missing-class-docstring
-        json_encoders = { bytes: _json_bytes_encoder }
-
-    _decoders = validator("ratchet_pub", "message_key", pre=True, allow_reuse=True)(_json_bytes_decoder)
+    message_key: JsonBytes
 
 
 class DoubleRatchetModel(BaseModel):
@@ -122,7 +109,3 @@ class DoubleRatchetModel(BaseModel):
     version: str = "1.0.0"
     diffie_hellman_ratchet: DiffieHellmanRatchetModel
     skipped_message_keys: List[SkippedMessageKeyModel]
-
-    # Workaround for correct serialization of bytes, see :func:`bytes_decoder` above for details.
-    class Config:  # pylint: disable=missing-class-docstring
-        json_encoders = { bytes: _json_bytes_encoder }

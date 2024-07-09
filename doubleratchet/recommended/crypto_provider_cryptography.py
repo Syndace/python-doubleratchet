@@ -76,7 +76,7 @@ class CryptoProviderImpl(CryptoProvider):
             backend=default_backend()
         ).encryptor()
 
-        return aes.update(padded_plaintext) + aes.finalize()  # pylint: disable=no-member
+        return aes.update(padded_plaintext) + aes.finalize()
 
     @staticmethod
     async def aes_cbc_decrypt(key: bytes, initialization_vector: bytes, ciphertext: bytes) -> bytes:
@@ -87,7 +87,7 @@ class CryptoProviderImpl(CryptoProvider):
                 modes.CBC(initialization_vector),
                 backend=default_backend()
             ).decryptor()
-            padded_plaintext = aes.update(ciphertext) + aes.finalize()  # pylint: disable=no-member
+            padded_plaintext = aes.update(ciphertext) + aes.finalize()
         except ValueError as e:
             raise aead.DecryptionFailedException("Decryption failed.") from e
 

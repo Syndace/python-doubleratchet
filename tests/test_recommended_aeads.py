@@ -120,7 +120,7 @@ def make_aead(
                 modes.CBC(iv),
                 backend=default_backend()
             ).encryptor()
-            ciphertext = aes.update(padded_plaintext) + aes.finalize()  # pylint: disable=no-member
+            ciphertext = aes.update(padded_plaintext) + aes.finalize()
 
             if modify is EvilEncryptModification.CIPHERTEXT:
                 # Remove the last byte of the ciphertext

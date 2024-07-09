@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.0.4] - 9th of July 2024
+
+### Changed
+- 2024 maintenance (bumped Python versions, adjusted for updates to pydantic, mypy, pylint and GitHub actions)
+
 ## [1.0.3] - 8th of November 2022
 
 ### Changed
@@ -32,7 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Pre-stable (i.e. versions before 1.0.0) changelog omitted.
 
-[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.0...v1.0.1

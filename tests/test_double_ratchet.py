@@ -125,7 +125,7 @@ async def test_double_ratchet() -> None:
         )
         shared_secret = generate_unique_random_data(32, 32 + 1, shared_secret_set)
         message = generate_unique_random_data(0, 2 ** 16, message_set)
-        ad = generate_unique_random_data(0, 2 ** 16, ad_set)  # pylint: disable=invalid-name
+        ad = generate_unique_random_data(0, 2 ** 16, ad_set)
 
         # Test that passing a shared secret which doesn't consist of 32 bytes raises an exception:
         try:

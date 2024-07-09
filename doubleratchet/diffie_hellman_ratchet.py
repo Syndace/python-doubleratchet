@@ -204,7 +204,7 @@ class DiffieHellmanRatchet(ABC):
             The internal state of this :class:`DiffieHellmanRatchet` as a JSON-serializable Python object.
         """
 
-        return cast(JSONObject, json.loads(self.model.json()))
+        return cast(JSONObject, json.loads(self.model.model_dump_json()))
 
     @classmethod
     def from_model(

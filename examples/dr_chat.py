@@ -172,6 +172,12 @@ async def loop(alice_dr: DoubleRatchet, bob_dr: DoubleRatchet, deferred: Deferre
 
     action = input("Action: ")
 
+    # (declarations to avoid possibly-used-before-assignment)
+    sender: str
+    receiver: str
+    sender_dr: DoubleRatchet
+    receiver_dr: DoubleRatchet
+
     if action == "a":
         sender = "Alice"
         receiver = "Bob"

@@ -89,7 +89,7 @@ class PreStableModel(BaseModel):
 
     super: PreStableDiffieHellmanRatchetModel
     skr: PreStableSymmetricKeyRatchetModel
-    ad: str  # pylint: disable=invalid-name
+    ad: str
     smks: Dict[str, str]
 
 
@@ -116,7 +116,7 @@ def parse_diffie_hellman_ratchet_model(serialized: JSONObject) -> DiffieHellmanR
     model: BaseModel = {
         "1.0.0": DiffieHellmanRatchetModel,
         "1.0.1": DiffieHellmanRatchetModel
-    }[version](**serialized)
+    }[version](**serialized)  # type: ignore[arg-type]
 
     # Once all migrations have been applied, the model should be an instance of the most recent model
     assert isinstance(model, DiffieHellmanRatchetModel)
@@ -174,7 +174,7 @@ def parse_double_ratchet_model(serialized: JSONObject) -> DoubleRatchetModel:
 
         skipped_message_keys: List[SkippedMessageKeyModel] = []
         for key, message_key in model.smks.items():
-            key_model = PreStableSMKKeyModel.parse_raw(key)
+            key_model = PreStableSMKKeyModel.model_validate_json(key)
             skipped_message_keys.append(SkippedMessageKeyModel(
                 ratchet_pub=base64.b64decode(key_model.pub),
                 index=key_model.index,
@@ -233,7 +233,7 @@ def parse_kdf_chain_model(serialized: JSONObject) -> KDFChainModel:
     model: BaseModel = {
         "1.0.0": KDFChainModel,
         "1.0.1": KDFChainModel
-    }[version](**serialized)
+    }[version](**serialized)  # type: ignore[arg-type]
 
     # Once all migrations have been applied, the model should be an instance of the most recent model
     assert isinstance(model, KDFChainModel)
@@ -264,7 +264,7 @@ def parse_symmetric_key_ratchet_model(serialized: JSONObject) -> SymmetricKeyRat
     model: BaseModel = {
         "1.0.0": SymmetricKeyRatchetModel,
         "1.0.1": SymmetricKeyRatchetModel
-    }[version](**serialized)
+    }[version](**serialized)  # type: ignore[arg-type]
 
     # Once all migrations have been applied, the model should be an instance of the most recent model
     assert isinstance(model, SymmetricKeyRatchetModel)
