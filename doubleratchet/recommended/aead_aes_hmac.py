@@ -6,7 +6,7 @@ from .crypto_provider_impl import CryptoProviderImpl
 from .. import aead
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "AEAD"
 ]
 

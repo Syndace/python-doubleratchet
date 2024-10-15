@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- Drop support for Python3.8, add support for Python3.13, bump PyPy test version to 3.10
+- Internal housekeeping, mostly related to pylint
+
 ## [1.0.4] - 9th of July 2024
 
 ### Changed

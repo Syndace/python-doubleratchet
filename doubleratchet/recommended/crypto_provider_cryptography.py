@@ -11,7 +11,7 @@ from .crypto_provider import CryptoProvider, HashFunction
 from .. import aead
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "CryptoProviderImpl"
 ]
 

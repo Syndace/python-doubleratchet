@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 from .. import diffie_hellman_ratchet
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "DiffieHellmanRatchet"
 ]
 

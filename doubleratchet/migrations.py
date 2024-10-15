@@ -1,5 +1,5 @@
 # This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
-from __future__ import annotations  # pylint: disable=unused-variable
+from __future__ import annotations
 
 import base64
 from typing import Dict, List, Optional, cast
@@ -16,7 +16,7 @@ from .models import (
 from .types import JSONObject
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "InconsistentSerializationException",
     "parse_diffie_hellman_ratchet_model",
     "parse_double_ratchet_model",

@@ -16,7 +16,7 @@ from doubleratchet.recommended import (
 from .test_recommended_kdfs import generate_unique_random_data
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "test_diffie_hellman_ratchet"
 ]
 
@@ -26,7 +26,7 @@ try:
 except ImportError:
     pass
 else:
-    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+    pytestmark = pytest.mark.asyncio
 
 
 class RootChainKDF(kdf_hkdf.KDF):

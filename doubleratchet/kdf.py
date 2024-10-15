@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "KDF"
 ]
 

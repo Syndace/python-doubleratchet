@@ -3,7 +3,7 @@ import enum
 from typing_extensions import assert_never
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "CryptoProvider",
     "HashFunction"
 ]

@@ -5,7 +5,7 @@ from typing import Set, Type
 from doubleratchet.recommended import HashFunction, kdf_hkdf, kdf_separate_hmacs
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "test_kdf_hkdf",
     "test_kdf_separate_hmacs"
 ]
@@ -16,7 +16,7 @@ try:
 except ImportError:
     pass
 else:
-    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+    pytestmark = pytest.mark.asyncio
 
 
 def make_kdf_hkdf(hash_function: HashFunction, info: bytes) -> Type[kdf_hkdf.KDF]:
@@ -31,7 +31,7 @@ def make_kdf_hkdf(hash_function: HashFunction, info: bytes) -> Type[kdf_hkdf.KDF
         The subclass.
     """
 
-    class KDF(kdf_hkdf.KDF):  # pylint: disable=missing-class-docstring
+    class KDF(kdf_hkdf.KDF):
         @staticmethod
         def _get_hash_function() -> HashFunction:
             return hash_function
@@ -54,7 +54,7 @@ def make_kdf_separate_hmacs(hash_function: HashFunction) -> Type[kdf_separate_hm
         The subclass.
     """
 
-    class KDF(kdf_separate_hmacs.KDF):  # pylint: disable=missing-class-docstring
+    class KDF(kdf_separate_hmacs.KDF):
         @staticmethod
         def _get_hash_function() -> HashFunction:
             return hash_function

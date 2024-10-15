@@ -10,7 +10,7 @@ from doubleratchet.recommended import HashFunction, kdf_hkdf
 from .test_recommended_kdfs import generate_unique_random_data
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "test_symmetric_key_ratchet"
 ]
 
@@ -20,7 +20,7 @@ try:
 except ImportError:
     pass
 else:
-    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+    pytestmark = pytest.mark.asyncio
 
 
 class KDF(kdf_hkdf.KDF):

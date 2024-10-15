@@ -13,7 +13,7 @@ from doubleratchet.recommended.crypto_provider_cryptography import CryptoProvide
 from .test_recommended_kdfs import generate_unique_random_data
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "test_aead_aes_hmac"
 ]
 
@@ -23,7 +23,7 @@ try:
 except ImportError:
     pass
 else:
-    pytestmark = pytest.mark.asyncio  # pylint: disable=unused-variable
+    pytestmark = pytest.mark.asyncio
 
 
 def flip_random_bit(data: bytes) -> bytes:
@@ -79,7 +79,7 @@ def make_aead(
         The subclass.
     """
 
-    class AEAD(aead_aes_hmac.AEAD):  # pylint: disable=missing-class-docstring
+    class AEAD(aead_aes_hmac.AEAD):
         @staticmethod
         def _get_hash_function() -> HashFunction:
             return hash_function

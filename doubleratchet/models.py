@@ -6,7 +6,7 @@ from pydantic.functional_validators import PlainValidator
 from typing_extensions import Annotated
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "DiffieHellmanRatchetModel",
     "DoubleRatchetModel",
     "KDFChainModel",

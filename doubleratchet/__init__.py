@@ -1,63 +1,34 @@
-from .version import __version__
-from .project import project
+from .version import __version__ as __version__
+from .project import project as project
 
-from .aead import AEAD, AuthenticationFailedException, DecryptionFailedException
-from .diffie_hellman_ratchet import DiffieHellmanRatchet, DoSProtectionException, DuplicateMessageException
-from .double_ratchet import DoubleRatchet
-from .kdf import KDF
-from .kdf_chain import KDFChain
-from .migrations import InconsistentSerializationException
-from .models import DiffieHellmanRatchetModel, DoubleRatchetModel, KDFChainModel, SymmetricKeyRatchetModel
-from .symmetric_key_ratchet import Chain, ChainNotAvailableException, SymmetricKeyRatchet
-from .types import EncryptedMessage, Header, JSONObject, SkippedMessageKeys
-
-
-# Fun:
-# https://github.com/PyCQA/pylint/issues/6006
-# https://github.com/python/mypy/issues/10198
-__all__ = [  # pylint: disable=unused-variable
-    # .version
-    "__version__",
-
-    # .project
-    "project",
-
-    # .aead
-    "AEAD",
-    "AuthenticationFailedException",
-    "DecryptionFailedException",
-
-    # .diffie_hellman_ratchet
-    "DiffieHellmanRatchet",
-    "DoSProtectionException",
-    "DuplicateMessageException",
-
-    # .double_ratchet
-    "DoubleRatchet",
-
-    # .kdf
-    "KDF",
-
-    # .kdf_chain
-    "KDFChain",
-
-    # .migrations
-    "InconsistentSerializationException",
-
-    # .models
-    "DiffieHellmanRatchetModel",
-    "DoubleRatchetModel",
-    "KDFChainModel",
-    "SymmetricKeyRatchetModel",
-
-    # .symmetric_key_ratchet
-    "Chain",
-    "ChainNotAvailableException",
-    "SymmetricKeyRatchet",
-
-    # .types
-    "EncryptedMessage",
-    "Header",
-    "JSONObject",
-    "SkippedMessageKeys"
-]
+from .aead import (
+    AEAD as AEAD,
+    AuthenticationFailedException as AuthenticationFailedException,
+    DecryptionFailedException as DecryptionFailedException
+)
+from .diffie_hellman_ratchet import (
+    DiffieHellmanRatchet as DiffieHellmanRatchet,
+    DoSProtectionException as DoSProtectionException,
+    DuplicateMessageException as DuplicateMessageException
+)
+from .double_ratchet import DoubleRatchet as DoubleRatchet
+from .kdf import KDF as KDF
+from .kdf_chain import KDFChain as KDFChain
+from .migrations import InconsistentSerializationException as InconsistentSerializationException
+from .models import (
+    DiffieHellmanRatchetModel as DiffieHellmanRatchetModel,
+    DoubleRatchetModel as DoubleRatchetModel,
+    KDFChainModel as KDFChainModel,
+    SymmetricKeyRatchetModel as SymmetricKeyRatchetModel
+)
+from .symmetric_key_ratchet import (
+    Chain as Chain,
+    ChainNotAvailableException as ChainNotAvailableException,
+    SymmetricKeyRatchet as SymmetricKeyRatchet
+)
+from .types import (
+    EncryptedMessage as EncryptedMessage,
+    Header as Header,
+    JSONObject as JSONObject,
+    SkippedMessageKeys as SkippedMessageKeys
+)

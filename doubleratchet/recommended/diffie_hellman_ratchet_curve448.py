@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from .. import diffie_hellman_ratchet
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "DiffieHellmanRatchet"
 ]
 

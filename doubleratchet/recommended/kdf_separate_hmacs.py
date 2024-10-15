@@ -5,7 +5,7 @@ from .crypto_provider_impl import CryptoProviderImpl
 from .. import kdf
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "KDF"
 ]
 

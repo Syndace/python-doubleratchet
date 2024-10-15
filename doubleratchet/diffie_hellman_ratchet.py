@@ -1,5 +1,5 @@
 # This import from future (theoretically) enables sphinx_autodoc_typehints to handle type aliases better
-from __future__ import annotations  # pylint: disable=unused-variable
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -15,7 +15,7 @@ from .symmetric_key_ratchet import Chain, SymmetricKeyRatchet
 from .types import Header, JSONObject, SkippedMessageKeys
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "DiffieHellmanRatchet",
     "DoSProtectionException",
     "DuplicateMessageException"
