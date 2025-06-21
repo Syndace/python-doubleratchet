@@ -67,7 +67,8 @@ html_static_path = [ "_static" ]
 
 # -- Autodoc Configuration ---------------------------------------------------------------
 
-nitpicky = True
+# Some annotated Pydantic fields cause nitpick warnings
+#nitpicky = True
 
 autodoc_typehints = "description"
 autodoc_type_aliases = { k: k for k in {
