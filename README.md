@@ -3,6 +3,10 @@
 [![Build Status](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-and-publish.yml/badge.svg)](https://github.com/Syndace/python-doubleratchet/actions/workflows/test-and-publish.yml)
 [![Documentation Status](https://readthedocs.org/projects/python-doubleratchet/badge/?version=latest)](https://python-doubleratchet.readthedocs.io/)
 
+**_This repository is actively maintained._**
+
+Activity is low at times because this project is already feature-complete, documented and tested.
+
 # python-doubleratchet #
 
 A Python implementation of the [Double Ratchet algorithm](https://signal.org/docs/specifications/doubleratchet/).
