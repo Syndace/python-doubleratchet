@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.1.1] - 21st of June 2025
+
+### Removed
+- Removed project.py and simplified version.py as part of the migration towards pyproject.toml
+
 ## [1.1.0] - 15th of October 2024
 
 ### Changed
@@ -43,7 +48,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Pre-stable (i.e. versions before 1.0.0) changelog omitted.
 
-[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.2...v1.0.3
