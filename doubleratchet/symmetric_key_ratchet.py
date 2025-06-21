@@ -32,8 +32,8 @@ class Chain(enum.Enum):
     Enumeration identifying the chain to replace by :meth:`SymmetricKeyRatchet.replace_chain`.
     """
 
-    SENDING: str = "SENDING"
-    RECEIVING: str = "RECEIVING"
+    SENDING = "SENDING"
+    RECEIVING = "RECEIVING"
 
 
 SymmetricKeyRatchetTypeT = TypeVar("SymmetricKeyRatchetTypeT", bound="SymmetricKeyRatchet")

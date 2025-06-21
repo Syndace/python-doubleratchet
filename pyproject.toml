@@ -1,3 +1,89 @@
 [build-system]
-requires = [ "setuptools", "wheel" ]
+requires = [ "setuptools" ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "DoubleRatchet"
+description = "A Python implementation of the Double Ratchet algorithm."
+readme = "README.md"
+dynamic = [ "version" ]
+authors = [
+    { name = "Tim Henkes (Syndace)", email = "me@syndace.dev" }
+]
+maintainers = [ { name = "Tim Henkes (Syndace)", email = "me@syndace.dev" } ]
+license = "MIT"
+license-files = [ "LICENSE" ]
+requires-python = ">= 3.9"
+dependencies = [
+    "cryptography>=3.3.2",
+    "pydantic>=1.7.4",
+    "typing-extensions>=4.3.0"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+
+    "Intended Audience :: Developers",
+    "Topic :: Security :: Cryptography"
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "doubleratchet.version.__version__" }
+
+[tool.setuptools.packages.find]
+exclude = [ "tests" ]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints"
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov"
+]
+lint = [
+    "mypy",
+    "types-setuptools",
+    "pylint",
+    "setuptools",
+    "flake8",
+    "flake8-pyproject"
+]
+dev = [
+    "doubleratchet[docs,test,lint]"
+]
+
+[project.urls]
+Documentation = "https://python-doubleratchet.readthedocs.io/"
+Repository = "https://github.com/Syndace/python-doubleratchet"
+Issues = "https://github.com/Syndace/python-doubleratchet/issues"
+Changelog = "https://github.com/Syndace/python-doubleratchet/blob/main/CHANGELOG.md"
+
+[tool.mypy]
+strict = true
+
+[tool.flake8]
+max-line-length = 110
+doctests = true
+ignore = [ "E201", "E202", "W503" ]
+per-file-ignores = [
+    "doubleratchet/__init__.py:F401",
+    "doubleratchet/recommended/__init__.py:F401"
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=doubleratchet --cov-report term-missing:skip-covered"

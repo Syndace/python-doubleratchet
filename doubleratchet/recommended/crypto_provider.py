@@ -18,9 +18,9 @@ class HashFunction(enum.Enum):
     and truncated SHA-512 to 256 bits.
     """
 
-    SHA_256: str = "SHA_256"
-    SHA_512: str = "SHA_512"
-    SHA_512_256: str = "SHA_512_256"
+    SHA_256 = "SHA_256"
+    SHA_512 = "SHA_512"
+    SHA_512_256 = "SHA_512_256"
 
     @property
     def hash_size(self) -> int:

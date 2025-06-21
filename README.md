@@ -27,13 +27,13 @@ FIFO order. There is no time-based or event-based deletion.
 python-doubleratchet uses [pytest](https://docs.pytest.org/en/latest/) as its testing framework, [mypy](http://mypy-lang.org/) for static type checks and both [pylint](https://pylint.pycqa.org/en/latest/) and [Flake8](https://flake8.pycqa.org/en/latest/) for linting. All tests/checks can be run locally with the following commands:
 
 ```sh
-$ pip install --upgrade pytest pytest-asyncio pytest-cov mypy pylint flake8
-$ mypy --strict doubleratchet/ setup.py examples/ tests/
-$ pylint doubleratchet/ setup.py examples/ tests/
-$ flake8 doubleratchet/ setup.py examples/ tests/
-$ pytest --cov=doubleratchet --cov-report term-missing:skip-covered
+$ pip install --upgrade .[test,lint]
+$ mypy doubleratchet/ examples/ tests/
+$ pylint doubleratchet/ examples/ tests/
+$ flake8 doubleratchet/ examples/ tests/
+$ pytest
 ```
 
 ## Documentation ##
 
-View the documentation on [readthedocs.io](https://python-doubleratchet.readthedocs.io/) or build it locally, which requires the Python packages listed in `docs/requirements.txt`. With all dependencies installed, run `make html` in the `docs/` directory. You can find the generated documentation in `docs/_build/html/`.
+View the documentation on [readthedocs.io](https://python-doubleratchet.readthedocs.io/) or build it locally. Additional requirements to build the docs can be installed using `pip install .[docs]`. With all dependencies installed, run `make html` in the `docs/` directory. You can find the generated documentation in `docs/_build/html/`.
