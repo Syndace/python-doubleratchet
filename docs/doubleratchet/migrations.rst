@@ -5,7 +5,6 @@ Migrations between pydantic model versions, refer to :ref:`serialization_and_mig
 
 .. automodule:: doubleratchet.migrations
     :members:
-    :special-members:
     :private-members:
     :undoc-members:
     :member-order: bysource
