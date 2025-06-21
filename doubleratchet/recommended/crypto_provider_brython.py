@@ -4,7 +4,7 @@ from typing_extensions import assert_never
 from .crypto_provider import CryptoProvider, HashFunction
 
 
-__all__ = [  # pylint: disable=unused-variable
+__all__ = [
     "CryptoProviderImpl"
 ]
 
