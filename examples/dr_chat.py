@@ -275,8 +275,6 @@ async def main() -> None:
     The entry point for this chat example. Parses command line args, loads cached data, runs the mainloop and
     caches data before quitting.
     """
-    # https://github.com/PyCQA/pylint/issues/3942
-    # pylint: disable=no-member
 
     parser = argparse.ArgumentParser(description="Double Ratchet Chat")
     parser.add_argument("-i", "--ignore-cache", dest="ignore_cache", action="store_true",
