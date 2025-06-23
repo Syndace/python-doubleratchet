@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, OrderedDict, Tuple, Union
+from typing import List, Mapping, NamedTuple, OrderedDict, Tuple, Union
 from typing_extensions import TypeAlias
 
 
@@ -17,8 +17,8 @@ __all__ = [
 # Type Aliases #
 ################
 
-JSONType: TypeAlias = Union[Dict[str, "JSONType"], List["JSONType"], str, int, float, bool, None]
-JSONObject: TypeAlias = Dict[str, "JSONType"]
+JSONType: TypeAlias = Union[Mapping[str, "JSONType"], List["JSONType"], str, int, float, bool, None]
+JSONObject: TypeAlias = Mapping[str, "JSONType"]
 
 SkippedMessageKeys: TypeAlias = OrderedDict[Tuple[bytes, int], bytes]
 

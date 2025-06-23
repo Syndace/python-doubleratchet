@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- Changed the `JSONType` type again to use `Mapping` instead of `Dict`
+
 ## [1.1.2] - 23rd of June 2025
 
 ### Changed
