@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.1.2] - 23rd of June 2025
+
 ### Changed
 - Simplified the `JSONObject` type now that recursive aliases are properly supported
 
@@ -51,7 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Pre-stable (i.e. versions before 1.0.0) changelog omitted.
 
-[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/Syndace/python-doubleratchet/compare/v1.0.3...v1.0.4
