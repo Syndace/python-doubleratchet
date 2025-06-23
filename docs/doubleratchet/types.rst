@@ -10,5 +10,6 @@ Module: types
 Type Aliases
 ============
 
+.. autoclass:: doubleratchet.types.JSONType
 .. autoclass:: doubleratchet.types.JSONObject
 .. autoclass:: doubleratchet.types.SkippedMessageKeys

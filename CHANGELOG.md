@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- Simplified the `JSONObject` type now that recursive aliases are properly supported
+
 ## [1.1.1] - 21st of June 2025
 
 ### Removed

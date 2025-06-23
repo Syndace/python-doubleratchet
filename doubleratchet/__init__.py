@@ -28,6 +28,7 @@ from .symmetric_key_ratchet import (
 from .types import (
     EncryptedMessage as EncryptedMessage,
     Header as Header,
+    JSONType as JSONType,
     JSONObject as JSONObject,
     SkippedMessageKeys as SkippedMessageKeys
 )
