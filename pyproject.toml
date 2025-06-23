@@ -57,9 +57,7 @@ test = [
 ]
 lint = [
     "mypy",
-    "types-setuptools",
     "pylint",
-    "setuptools",
     "flake8",
     "flake8-pyproject"
 ]
