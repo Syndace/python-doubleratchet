@@ -41,9 +41,10 @@ async def test_kdf_chain() -> None:
 
     initial_key_set: Set[bytes] = set()
     input_data_set: Set[bytes] = set()
-    output_data_set: Set[bytes] = set()
 
     for _ in range(25):
+        output_data_set: Set[bytes] = set()
+
         # Generate random parameters
         while True:
             initial_key = generate_unique_random_data(0, 2 ** 16, initial_key_set)
