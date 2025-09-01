@@ -42,7 +42,8 @@ classifiers = [
 version = { attr = "doubleratchet.version.__version__" }
 
 [tool.setuptools.packages.find]
-exclude = [ "tests" ]
+include = [ "doubleratchet", "doubleratchet.*" ]
+namespaces = false
 
 [project.optional-dependencies]
 docs = [
