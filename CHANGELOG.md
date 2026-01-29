@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.3.0] - 29th of January 2026
+
+### Changed
+- Drop support for Python3.9 and PyPy3.10, add support for Python3.14
+- Updated pylintrc with the newest options
+- 2026 maintenance
+
 ## [1.2.0] - 24th of June 2025
 
 ### Changed
@@ -58,7 +65,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Pre-stable (i.e. versions before 1.0.0) changelog omitted.
 
-[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Syndace/python-doubleratchet/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Syndace/python-doubleratchet/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/Syndace/python-doubleratchet/compare/v1.1.0...v1.1.1
