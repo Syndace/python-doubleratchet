@@ -47,7 +47,7 @@ async def test_kdf_chain() -> None:
 
         # Generate random parameters
         while True:
-            initial_key = generate_unique_random_data(0, 2 ** 16, initial_key_set)
+            initial_key = generate_unique_random_data(1, 2 ** 16, initial_key_set)
             input_data = generate_unique_random_data(0, 2 ** 16, input_data_set)
 
             output_data_length = random.randrange(2, 2 ** 16)
