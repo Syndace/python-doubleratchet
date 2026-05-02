@@ -1,9 +1,8 @@
-from typing import Any, List, Optional
+from typing import Annotated, Any, List, Optional
 
 from pydantic import BaseModel
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import PlainValidator
-from typing_extensions import Annotated
 
 
 __all__ = [

@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 import enum
-from typing_extensions import assert_never
+import sys
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:
+    from typing_extensions import assert_never
 
 
 __all__ = [

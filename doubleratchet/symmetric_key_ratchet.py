@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import enum
 import json
+import sys
 from typing import Optional, Type, TypeVar, cast
-from typing_extensions import assert_never
 
 from .kdf import KDF
 from .kdf_chain import KDFChain
 from .migrations import parse_symmetric_key_ratchet_model
 from .models import SymmetricKeyRatchetModel
 from .types import JSONObject
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:
+    from typing_extensions import assert_never
 
 
 __all__ = [
