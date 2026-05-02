@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.3.0] - 29th of January 2026
 
 ### Changed
-- Drop support for Python3.9 and PyPy3.10, add support for Python3.14
+- Drop support for Python3.9, add support for Python3.14
 - Updated pylintrc with the newest options
 - 2026 maintenance
 
